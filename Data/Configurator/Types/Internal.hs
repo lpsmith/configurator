@@ -181,6 +181,7 @@ type Binding = (Name,Value)
 data Directive = Import Path
                | Bind Name Value
                | Group Name [Directive]
+               | DirectiveComment Directive
                  deriving (Eq, Show, Typeable, Data)
 
 -- | A value in a 'Config'.

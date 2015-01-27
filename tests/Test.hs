@@ -105,6 +105,12 @@ loadTest =
     deep <- lookup cfg "ag.q-e.i_u9.a"
     assertEqual "deep bool" deep (Just False :: Maybe Bool)
 
+    notacomment <- lookup cfg "notacomment"
+    assertEqual "not a comment" notacomment (Just 42 :: Maybe Int)
+
+    comment <- lookup cfg "comment.x"
+    assertEqual "comment" comment (Nothing :: Maybe Value)
+
 typesTest :: Assertion
 typesTest =
   withLoad "pathological.cfg" $ \cfg -> do

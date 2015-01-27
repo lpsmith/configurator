@@ -31,11 +31,12 @@ import qualified Data.Text.Lazy as L
 
 topLevel :: Parser [Directive]
 topLevel = directives <* skipLWS <* endOfInput
-  
+
 directive :: Parser Directive
 directive =
   mconcat [
     string "import" *> skipLWS *> (Import <$> string_)
+  , string "#;" *> skipLWS *> (DirectiveComment <$> directive)
   , Bind <$> try (ident <* skipLWS <* char '=' <* skipLWS) <*> value
   , Group <$> try (ident <* skipLWS <* char '{' <* skipLWS)
           <*> directives <* skipLWS <* char '}'
@@ -49,13 +50,18 @@ data Skip = Space | Comment
 
 -- | Skip lines, comments, or horizontal white space.
 skipLWS :: Parser ()
-skipLWS = scan Space go *> pure ()
-  where go Space c | isSpace c = Just Space
-        go Space '#'           = Just Comment
-        go Space _             = Nothing
-        go Comment '\r'        = Just Space
-        go Comment '\n'        = Just Space
-        go Comment _           = Just Comment
+skipLWS = loop
+  where
+    loop = A.takeWhile isSpace >> ((comment >> loop) <|> return ())
+
+    comment = try beginComment >> A.takeWhile (\c -> c /= '\r' && c /= '\n')
+
+    beginComment = do
+      _ <- A.char '#'
+      mc <- peekChar
+      case mc of
+        Just ';' -> fail ""
+        _ -> return ()
 
 -- | Skip comments or horizontal white space.
 skipHWS :: Parser ()
@@ -138,7 +144,7 @@ hexQuad = do
       if a <= 0xdbff && b >= 0xdc00 && b <= 0xdfff
         then return $! chr (((a - 0xd800) `shiftL` 10) + (b - 0xdc00) + 0x10000)
         else fail "invalid UTF-16 surrogates"
-                   
+
 -- | Parse a string interpolation spec.
 --
 -- The sequence @$$@ is treated as a single @$@ character.  The

@@ -282,6 +282,7 @@ flatten roots files = foldM doPath H.empty roots
       in  case H.lookup (Required (relativize f path)) files of
             Just ds -> foldM (directive pfx f') m ds
             _       -> return m
+  directive _ _ m (DirectiveComment _) = return m
 
 interpolate :: T.Text -> T.Text -> H.HashMap Name Value -> IO T.Text
 interpolate pfx s env
