@@ -85,6 +85,7 @@ import qualified Control.Exception as E
 import qualified Data.Attoparsec.Text as T
 import qualified Data.Attoparsec.Text.Lazy as L
 import qualified Data.HashMap.Lazy as H
+import qualified Data.CritBit.Map.Lazy as CB
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as L
 import qualified Data.Text.Lazy.IO as L
@@ -95,7 +96,7 @@ loadFiles = foldM go H.empty
    go seen path = do
      let rewrap n = const n <$> path
          wpath = worth path
-     path' <- rewrap <$> interpolate "" wpath H.empty
+     path' <- rewrap <$> interpolate "" wpath CB.empty
      ds    <- loadOne (T.unpack <$> path')
      let !seen'    = H.insert path ds seen
          notSeen n = not . isJust . H.lookup n $ seen
@@ -231,7 +232,7 @@ getMeta paths = forM paths $ \path ->
 -- converted value, otherwise 'Nothing'.
 lookup :: Configured a => Config -> Name -> IO (Maybe a)
 lookup (Config root BaseConfig{..}) name =
-    (join . fmap convert . H.lookup (root `T.append` name)) <$> readIORef cfgMap
+    (join . fmap convert . CB.lookup (root `T.append` name)) <$> readIORef cfgMap
 
 -- | Look up a name in the given 'Config'.  If a binding exists, and
 -- the value can be 'convert'ed to the desired type, return the
@@ -258,13 +259,13 @@ display :: Config -> IO ()
 display (Config root BaseConfig{..}) = print . (root,) =<< readIORef cfgMap
 
 -- | Fetch the 'H.HashMap' that maps names to values.
-getMap :: Config -> IO (H.HashMap Name Value)
+getMap :: Config -> IO (CB.CritBit Name Value)
 getMap = readIORef . cfgMap . baseCfg
 
 flatten :: [(Name, Worth Path)]
         -> H.HashMap (Worth Path) [Directive]
-        -> IO (H.HashMap Name Value)
-flatten roots files = foldM doPath H.empty roots
+        -> IO (CB.CritBit Name Value)
+flatten roots files = foldM doPath CB.empty roots
  where
   doPath m (pfx, f) = case H.lookup f files of
         Nothing -> return m
@@ -272,9 +273,9 @@ flatten roots files = foldM doPath H.empty roots
 
   directive pfx _ m (Bind name (String value)) = do
       v <- interpolate pfx value m
-      return $! H.insert (T.append pfx name) (String v) m
+      return $! CB.insert (T.append pfx name) (String v) m
   directive pfx _ m (Bind name value) =
-      return $! H.insert (T.append pfx name) value m
+      return $! CB.insert (T.append pfx name) value m
   directive pfx f m (Group name xs) = foldM (directive pfx' f) m xs
       where pfx' = T.concat [pfx, name, "."]
   directive pfx f m (Import path) =
@@ -284,7 +285,7 @@ flatten roots files = foldM doPath H.empty roots
             _       -> return m
   directive _ _ m (DirectiveComment _) = return m
 
-interpolate :: T.Text -> T.Text -> H.HashMap Name Value -> IO T.Text
+interpolate :: T.Text -> T.Text -> CB.CritBit Name Value -> IO T.Text
 interpolate pfx s env
     | "$" `T.isInfixOf` s =
       case T.parseOnly interp s of
@@ -292,7 +293,7 @@ interpolate pfx s env
         Right xs -> (L.toStrict . toLazyText . mconcat) <$> mapM interpret xs
     | otherwise = return s
  where
-  lookupEnv name = msum $ map (flip H.lookup env) fullnames
+  lookupEnv name = msum $ map (flip CB.lookup env) fullnames
     where fullnames = map (T.intercalate ".")     -- ["a.b.c.x","a.b.x","a.x","x"]
                     . map (reverse . (name:)) -- [["a","b","c","x"],["a","b","x"],["a","x"],["x"]]
                     . tails                   -- [["c","b","a"],["b","a"],["a"],[]]
@@ -359,17 +360,17 @@ localPattern :: Name -> Pattern -> Pattern
 localPattern pfx (Exact  s) = Exact  (pfx `T.append` s)
 localPattern pfx (Prefix s) = Prefix (pfx `T.append` s)
 
-notifySubscribers :: BaseConfig -> H.HashMap Name Value -> H.HashMap Name Value
+notifySubscribers :: BaseConfig -> CB.CritBit Name Value -> CB.CritBit Name Value
                   -> H.HashMap Pattern [ChangeHandler] -> IO ()
 notifySubscribers BaseConfig{..} m m' subs = H.foldrWithKey go (return ()) subs
  where
-  changedOrGone = H.foldrWithKey check [] m
-      where check n v nvs = case H.lookup n m' of
+  changedOrGone = CB.foldrWithKey check [] m
+      where check n v nvs = case CB.lookup n m' of
                               Just v' | v /= v'   -> (n,Just v'):nvs
                                       | otherwise -> nvs
                               _                   -> (n,Nothing):nvs
-  new = H.foldrWithKey check [] m'
-      where check n v nvs = case H.lookup n m of
+  new = CB.foldrWithKey check [] m'
+      where check n v nvs = case CB.lookup n m of
                               Nothing -> (n,v):nvs
                               _       -> nvs
   notify p n v a = a n v `E.catch` maybe report onError cfgAuto
@@ -377,8 +378,8 @@ notifySubscribers BaseConfig{..} m m' subs = H.foldrWithKey go (return ()) subs
                      "*** a ChangeHandler threw an exception for " ++
                      show (p,n) ++ ": " ++ show e
   go p@(Exact n) acts next = (const next =<<) $ do
-    let v' = H.lookup n m'
-    when (H.lookup n m /= v') . mapM_ (notify p n v') $ acts
+    let v' = CB.lookup n m'
+    when (CB.lookup n m /= v') . mapM_ (notify p n v') $ acts
   go p@(Prefix n) acts next = (const next =<<) $ do
     let matching = filter (T.isPrefixOf n . fst)
     forM_ (matching new) $ \(n',v) -> mapM_ (notify p n' (Just v)) acts
@@ -388,7 +389,7 @@ notifySubscribers BaseConfig{..} m m' subs = H.foldrWithKey go (return ()) subs
 empty :: Config
 empty = Config "" $ unsafePerformIO $ do
           p <- newIORef []
-          m <- newIORef H.empty
+          m <- newIORef CB.empty
           s <- newIORef H.empty
           return BaseConfig {
                        cfgAuto = Nothing

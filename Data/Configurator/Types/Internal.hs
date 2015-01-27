@@ -42,6 +42,7 @@ import qualified Data.Text as T
 import Data.Typeable (Typeable)
 import Prelude hiding (lookup)
 import qualified Data.HashMap.Lazy as H
+import qualified Data.CritBit.Map.Lazy as CB
 
 data Worth a = Required { worth :: a }
              | Optional { worth :: a }
@@ -62,7 +63,7 @@ data BaseConfig = BaseConfig {
       cfgAuto :: Maybe AutoConfig
     , cfgPaths :: IORef [(Name, Worth Path)]
     -- ^ The files from which the 'Config' was loaded.
-    , cfgMap :: IORef (H.HashMap Name Value)
+    , cfgMap :: IORef (CB.CritBit Name Value)
     , cfgSubs :: IORef (H.HashMap Pattern [ChangeHandler])
     }
 

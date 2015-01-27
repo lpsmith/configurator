@@ -61,6 +61,7 @@ library
     attoparsec >= 0.10.0.2,
     base == 4.*,
     bytestring,
+    critbit,
     directory,
     hashable,
     text >= 0.11.1.0,
