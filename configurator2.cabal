@@ -50,6 +50,7 @@ flag developer
 library
   exposed-modules:
     Data.Configurator
+    Data.Configurator.ConfigMap
     Data.Configurator.Types
 
   other-modules:
@@ -63,6 +64,7 @@ library
     bytestring,
     critbit,
     directory,
+    data-ordlist,
     hashable,
     text >= 0.11.1.0,
     unix-compat,
