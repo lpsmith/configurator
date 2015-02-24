@@ -58,12 +58,12 @@ foldPlan empty union lookup = loop
 {-# INLINE foldPlan #-}
 
 
-type Config a = ConfigPlan (CB.CritBit Text a)
+type ConfigMap a = ConfigPlan (CB.CritBit Text a)
 
-subassocs :: Text -> Config a -> [(Text,a)]
+subassocs :: Text -> ConfigMap a -> [(Text,a)]
 subassocs key c = subassocs_ ((CB.assocs .) . submap) key c
 
-lookup :: Text -> Config a -> Maybe a
+lookup :: Text -> ConfigMap a -> Maybe a
 lookup = foldPlan Nothing (<|>) CB.lookup
 
 
@@ -107,7 +107,7 @@ submap key map
 null :: ConfigPlan (CritBit Text a) -> Bool
 null = foldPlan True (&&) ((CB.null .) . submap) T.empty
 
-subgroups :: Text -> ConfigPlan (CritBit Text a) -> [Text]
+subgroups :: Text -> ConfigMap a -> [Text]
 subgroups = loop
   where
     stripPrefixes pre = mapMaybe (stripPrefix pre)
