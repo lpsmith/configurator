@@ -63,6 +63,7 @@ library
     base == 4.*,
     bytestring,
     critbit,
+    dlist,
     directory,
     data-ordlist,
     hashable,
