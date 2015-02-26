@@ -332,7 +332,7 @@ optionalPred name def pred =
                         }
                      in if pred v'
                         then (Just v', mempty)
-                        else (Nothing, DL.singleton err)
+                        else (Just def, DL.singleton err)
 
 {--
 
