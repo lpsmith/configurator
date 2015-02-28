@@ -256,41 +256,7 @@ required name = requiredPred name (const True)
 
 requiredPred :: forall a. (Configured a, Typeable a)
              => Name -> (a -> Bool) -> ConfigParser a
-requiredPred name pred =
-    RMW $ \c ->
-        case lookupWithName name c of
-          Nothing ->
-              let err = ConfigParseError {
-                           configErrorKeys = DL.toList (getLookupPlan name c),
-                           configErrorVal  = Nothing,
-                           configErrorType = typeOf (undefined :: a),
-                           configErrorDef  = Nothing,
-                           configErrorWhy  = Missing
-                        }
-               in (Nothing, DL.singleton err)
-          Just (name', v) ->
-              case convert v of
-                Nothing ->
-                    let err = ConfigParseError {
-                           configErrorKeys = [name'],
-                           configErrorVal  = Just v,
-                           configErrorType = typeOf (undefined :: a),
-                           configErrorDef  = Nothing,
-                           configErrorWhy  = ConversionError
-                         }
-                     in (Nothing, DL.singleton err)
-                Just v' ->
-                    let err = ConfigParseError {
-                           configErrorKeys = [name'],
-                           configErrorVal  = Just v,
-                           configErrorType = typeOf (undefined :: a),
-                           configErrorDef  = Nothing,
-                           configErrorWhy  = PredicateFailed
-                        }
-                     in if pred v'
-                        then (Just v', mempty)
-                        else (Nothing, DL.singleton err)
-
+requiredPred name pred = parseField name Nothing Nothing pred
 
 optional :: forall a. (Configured a, Typeable a, Show a)
          => Name -> a -> ConfigParser a
@@ -299,40 +265,44 @@ optional name def = optionalPred name def (const True)
 
 optionalPred :: forall a. (Configured a, Typeable a, Show a)
              => Name -> a -> (a -> Bool) -> ConfigParser a
-optionalPred name def pred =
+optionalPred name def pred = parseField name (Just def) (Just (show def)) pred
+
+
+parseField :: forall a. (Configured a, Typeable a)
+             => Name -> Maybe a -> Maybe String -> (a -> Bool) -> ConfigParser a
+parseField name mdef mdefstr pred =
     RMW $ \c ->
         case lookupWithName name c of
-          Nothing ->
-              let err = ConfigParseError {
-                           configErrorKeys = DL.toList (getLookupPlan name c),
-                           configErrorVal  = Nothing,
-                           configErrorType = typeOf (undefined :: a),
-                           configErrorDef  = Just (show def),
-                           configErrorWhy  = Missing
-                        }
-               in (Just def, DL.singleton err)
+          Nothing -> (mdef, DL.singleton (miss_err c))
           Just (name', v) ->
               case convert v of
-                Nothing ->
-                    let err = ConfigParseError {
-                           configErrorKeys = [name'],
-                           configErrorVal  = Just v,
-                           configErrorType = typeOf (undefined :: a),
-                           configErrorDef  = Just (show def),
-                           configErrorWhy  = ConversionError
-                         }
-                     in (Just def, DL.singleton err)
-                Just v' ->
-                    let err = ConfigParseError {
-                           configErrorKeys = [name'],
-                           configErrorVal  = Just v,
-                           configErrorType = typeOf (undefined :: a),
-                           configErrorDef  = Just (show def),
-                           configErrorWhy  = PredicateFailed
-                        }
-                     in if pred v'
-                        then (Just v', mempty)
-                        else (Just def, DL.singleton err)
+                Nothing -> (mdef, DL.singleton (conv_err v))
+                Just v' -> if pred v'
+                           then (Just v', mempty)
+                           else (mdef, DL.singleton (user_err v))
+  where
+     miss_err c = ConfigParseError {
+                    configErrorKeys = DL.toList (getLookupPlan name c),
+                    configErrorVal  = Nothing,
+                    configErrorType = typeOf (undefined :: a),
+                    configErrorDef  = mdefstr,
+                    configErrorWhy  = Missing
+                  }
+     conv_err v = ConfigParseError {
+                    configErrorKeys = [name'],
+                    configErrorVal  = Just v,
+                    configErrorType = typeOf (undefined :: a),
+                    configErrorDef  = mdefstr,
+                    configErrorWhy  = ConversionError
+                  }
+     pred_err v = ConfigParseError {
+                    configErrorKeys = [name'],
+                    configErrorVal  = Just v,
+                    configErrorType = typeOf (undefined :: a),
+                    configErrorDef  = mdefstr,
+                    configErrorWhy  = PredicateFailed
+                  }
+
 
 {--
 
