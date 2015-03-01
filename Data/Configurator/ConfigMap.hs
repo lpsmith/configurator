@@ -276,32 +276,35 @@ parseField name mdef mdefstr pred =
           Nothing -> (mdef, DL.singleton (miss_err c))
           Just (name', v) ->
               case convert v of
-                Nothing -> (mdef, DL.singleton (conv_err v))
+                Nothing -> (mdef, DL.singleton (conv_err name' v))
                 Just v' -> if pred v'
                            then (Just v', mempty)
-                           else (mdef, DL.singleton (user_err v))
+                           else (mdef, DL.singleton (pred_err name' v))
   where
-     miss_err c = ConfigParseError {
-                    configErrorKeys = DL.toList (getLookupPlan name c),
-                    configErrorVal  = Nothing,
-                    configErrorType = typeOf (undefined :: a),
-                    configErrorDef  = mdefstr,
-                    configErrorWhy  = Missing
-                  }
-     conv_err v = ConfigParseError {
-                    configErrorKeys = [name'],
-                    configErrorVal  = Just v,
-                    configErrorType = typeOf (undefined :: a),
-                    configErrorDef  = mdefstr,
-                    configErrorWhy  = ConversionError
-                  }
-     pred_err v = ConfigParseError {
-                    configErrorKeys = [name'],
-                    configErrorVal  = Just v,
-                    configErrorType = typeOf (undefined :: a),
-                    configErrorDef  = mdefstr,
-                    configErrorWhy  = PredicateFailed
-                  }
+     miss_err c 
+         = ConfigParseError {
+             configErrorKeys = DL.toList (getLookupPlan name c),
+             configErrorVal  = Nothing,
+             configErrorType = typeOf (undefined :: a),
+             configErrorDef  = mdefstr,
+             configErrorWhy  = Missing
+           }
+     conv_err name' v 
+         = ConfigParseError {
+             configErrorKeys = [name'],
+             configErrorVal  = Just v,
+             configErrorType = typeOf (undefined :: a),
+             configErrorDef  = mdefstr,
+             configErrorWhy  = ConversionError
+           }
+     pred_err name' v 
+         = ConfigParseError {
+             configErrorKeys = [name'],
+             configErrorVal  = Just v,
+             configErrorType = typeOf (undefined :: a),
+             configErrorDef  = mdefstr,
+             configErrorWhy  = PredicateFailed
+           }
 
 
 {--
