@@ -11,7 +11,7 @@
 module Data.Configurator.Types
     (
       AutoConfig(..)
-    , Config
+    , ConfigCache
     , Name
     , Value(..)
     , Configured, convert

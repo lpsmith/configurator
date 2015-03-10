@@ -102,20 +102,20 @@ loadFiles = foldM go H.empty
          notSeen n = not . isJust . H.lookup n $ seen
      foldM go seen' . filter notSeen . importsOf wpath $ ds
 
--- | Create a 'Config' from the contents of the named files. Throws an
+-- | Create a 'ConfigCache' from the contents of the named files. Throws an
 -- exception on error, such as if files do not exist or contain errors.
 --
 -- File names have any environment variables expanded prior to the
 -- first time they are opened, so you can specify a file name such as
 -- @\"$(HOME)/myapp.cfg\"@.
-load :: [Worth FilePath] -> IO Config
-load files = fmap (Config "") $ load' Nothing (map (\f -> ("", f)) files)
+load :: [Worth FilePath] -> IO ConfigCache
+load files = fmap (ConfigCache "") $ load' Nothing (map (\f -> ("", f)) files)
 
--- | Create a 'Config' from the contents of the named files, placing them
+-- | Create a 'ConfigCache' from the contents of the named files, placing them
 -- into named prefixes.  If a prefix is non-empty, it should end in a
 -- dot.
-loadGroups :: [(Name, Worth FilePath)] -> IO Config
-loadGroups files = fmap (Config "") $ load' Nothing files
+loadGroups :: [(Name, Worth FilePath)] -> IO ConfigCache
+loadGroups files = fmap (ConfigCache "") $ load' Nothing files
 
 load' :: Maybe AutoConfig -> [(Name, Worth FilePath)] -> IO BaseConfig
 load' auto paths0 = do
@@ -132,18 +132,18 @@ load' auto paths0 = do
               , cfgSubs = s
               }
 
--- | Gives a 'Config' corresponding to just a single group of the original
--- 'Config'.  The subconfig can be used just like the original 'Config', but
+-- | Gives a 'ConfigCache' corresponding to just a single group of the original
+-- 'ConfigCache'.  The subconfig can be used just like the original 'ConfigCache', but
 -- see the documentation for 'reload'.
-subconfig :: Name -> Config -> Config
-subconfig g (Config root cfg) = Config (T.concat [root, g, "."]) cfg
+subconfig :: Name -> ConfigCache -> ConfigCache
+subconfig g (ConfigCache root cfg) = ConfigCache (T.concat [root, g, "."]) cfg
 
--- | Forcibly reload a 'Config'. Throws an exception on error, such as
--- if files no longer exist or contain errors.  If the provided 'Config' is
+-- | Forcibly reload a 'ConfigCache'. Throws an exception on error, such as
+-- if files no longer exist or contain errors.  If the provided 'ConfigCache' is
 -- a 'subconfig', this will reload the entire top-level configuration, not just
 -- the local section.
-reload :: Config -> IO ()
-reload (Config _ cfg@BaseConfig{..}) = reloadBase cfg
+reload :: ConfigCache -> IO ()
+reload (ConfigCache _ cfg@BaseConfig{..}) = reloadBase cfg
 
 reloadBase :: BaseConfig -> IO ()
 reloadBase cfg@BaseConfig{..} = do
@@ -152,16 +152,16 @@ reloadBase cfg@BaseConfig{..} = do
   m <- atomicModifyIORef cfgMap $ \m -> (m', m)
   notifySubscribers cfg m m' =<< readIORef cfgSubs
 
--- | Add additional files to a 'Config', causing it to be reloaded to add
+-- | Add additional files to a 'ConfigCache', causing it to be reloaded to add
 -- their contents.
-addToConfig :: [Worth FilePath] -> Config -> IO ()
+addToConfig :: [Worth FilePath] -> ConfigCache -> IO ()
 addToConfig paths0 cfg = addGroupsToConfig (map (\x -> ("",x)) paths0) cfg
 
--- | Add additional files to named groups in a 'Config', causing it to be
+-- | Add additional files to named groups in a 'ConfigCache', causing it to be
 -- reloaded to add their contents.  If the prefixes are non-empty, they should
 -- end in dots.
-addGroupsToConfig :: [(Name, Worth FilePath)] -> Config -> IO ()
-addGroupsToConfig paths0 (Config root cfg@BaseConfig{..}) = do
+addGroupsToConfig :: [(Name, Worth FilePath)] -> ConfigCache -> IO ()
+addGroupsToConfig paths0 (ConfigCache root cfg@BaseConfig{..}) = do
   let fix (x,y) = (root `T.append` x, fmap T.pack y)
       paths     = map fix paths0
   atomicModifyIORef cfgPaths $ \prev -> (prev ++ paths, ())
@@ -176,12 +176,12 @@ autoConfig = AutoConfig {
              , onError = const $ return ()
              }
 
--- | Load a 'Config' from the given 'FilePath's, and start a reload
+-- | Load a 'ConfigCache' from the given 'FilePath's, and start a reload
 -- thread.
 --
 -- At intervals, a thread checks for modifications to both the
 -- original files and any files they refer to in @import@ directives,
--- and reloads the 'Config' if any files have been modified.
+-- and reloads the 'ConfigCache' if any files have been modified.
 --
 -- If the initial attempt to load the configuration files fails, an
 -- exception is thrown.  If the initial load succeeds, but a
@@ -195,12 +195,12 @@ autoReload :: AutoConfig
            -- errors.
            -> [Worth FilePath]
            -- ^ Configuration files to load.
-           -> IO (Config, ThreadId)
+           -> IO (ConfigCache, ThreadId)
 autoReload auto paths = autoReloadGroups auto (map (\x -> ("", x)) paths)
 
 autoReloadGroups :: AutoConfig
                  -> [(Name, Worth FilePath)]
-                 -> IO (Config, ThreadId)
+                 -> IO (ConfigCache, ThreadId)
 autoReloadGroups AutoConfig{..} _
     | interval < 1    = error "autoReload: negative interval"
 autoReloadGroups _ [] = error "autoReload: no paths to load"
@@ -214,7 +214,7 @@ autoReloadGroups auto@AutoConfig{..} paths = do
           then loop meta
           else (reloadBase cfg `E.catch` onError) >> loop meta'
   tid <- forkIO $ loop =<< getMeta files
-  return (Config "" cfg, tid)
+  return (ConfigCache "" cfg, tid)
 
 -- | Save both a file's size and its last modification date, so we
 -- have a better chance of detecting a modification on a crappy
@@ -227,39 +227,39 @@ getMeta paths = forM paths $ \path ->
      st <- getFileStatus (worth path)
      return (fileSize st, modificationTime st)
 
--- | Look up a name in the given 'Config'.  If a binding exists, and
+-- | Look up a name in the given 'ConfigCache'.  If a binding exists, and
 -- the value can be 'convert'ed to the desired type, return the
 -- converted value, otherwise 'Nothing'.
-lookup :: Configured a => Config -> Name -> IO (Maybe a)
-lookup (Config root BaseConfig{..}) name =
+lookup :: Configured a => ConfigCache -> Name -> IO (Maybe a)
+lookup (ConfigCache root BaseConfig{..}) name =
     (join . fmap convert . CB.lookup (root `T.append` name)) <$> readIORef cfgMap
 
--- | Look up a name in the given 'Config'.  If a binding exists, and
+-- | Look up a name in the given 'ConfigCache'.  If a binding exists, and
 -- the value can be 'convert'ed to the desired type, return the
 -- converted value, otherwise throw a 'KeyError'.
-require :: Configured a => Config -> Name -> IO a
+require :: Configured a => ConfigCache -> Name -> IO a
 require cfg name = do
   val <- lookup cfg name
   case val of
     Just v -> return v
     _      -> throwIO . KeyError $ name
 
--- | Look up a name in the given 'Config'.  If a binding exists, and
+-- | Look up a name in the given 'ConfigCache'.  If a binding exists, and
 -- the value can be converted to the desired type, return it,
 -- otherwise return the default value.
 lookupDefault :: Configured a =>
                  a
               -- ^ Default value to return if 'lookup' or 'convert'
               -- fails.
-              -> Config -> Name -> IO a
+              -> ConfigCache -> Name -> IO a
 lookupDefault def cfg name = fromMaybe def <$> lookup cfg name
 
--- | Perform a simple dump of a 'Config' to @stdout@.
-display :: Config -> IO ()
-display (Config root BaseConfig{..}) = print . (root,) =<< readIORef cfgMap
+-- | Perform a simple dump of a 'ConfigCache' to @stdout@.
+display :: ConfigCache -> IO ()
+display (ConfigCache root BaseConfig{..}) = print . (root,) =<< readIORef cfgMap
 
 -- | Fetch the 'H.HashMap' that maps names to values.
-getMap :: Config -> IO (CB.CritBit Name Value)
+getMap :: ConfigCache -> IO (CB.CritBit Name Value)
 getMap = readIORef . cfgMap . baseCfg
 
 flatten :: [(Name, Worth Path)]
@@ -350,8 +350,8 @@ loadOne path = do
 -- | Subscribe for notifications.  The given action will be invoked
 -- when any change occurs to a configuration property matching the
 -- supplied pattern.
-subscribe :: Config -> Pattern -> ChangeHandler -> IO ()
-subscribe (Config root BaseConfig{..}) pat act = do
+subscribe :: ConfigCache -> Pattern -> ChangeHandler -> IO ()
+subscribe (ConfigCache root BaseConfig{..}) pat act = do
   m' <- atomicModifyIORef cfgSubs $ \m ->
         let m' = H.insertWith (++) (localPattern root pat) [act] m in (m', m')
   evaluate m' >> return ()
@@ -386,8 +386,8 @@ notifySubscribers BaseConfig{..} m m' subs = H.foldrWithKey go (return ()) subs
     forM_ (matching changedOrGone) $ \(n',v) -> mapM_ (notify p n' v) acts
 
 -- | A completely empty configuration.
-empty :: Config
-empty = Config "" $ unsafePerformIO $ do
+empty :: ConfigCache
+empty = ConfigCache "" $ unsafePerformIO $ do
           p <- newIORef []
           m <- newIORef CB.empty
           s <- newIORef H.empty

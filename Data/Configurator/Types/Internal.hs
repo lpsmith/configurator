@@ -13,7 +13,7 @@
 module Data.Configurator.Types.Internal
     (
       BaseConfig(..)
-    , Config(..)
+    , ConfigCache(..)
     , Configured(..)
     , AutoConfig(..)
     , Worth(..)
@@ -68,7 +68,7 @@ data BaseConfig = BaseConfig {
     }
 
 -- | Configuration data.
-data Config = Config { root :: Text, baseCfg :: BaseConfig }
+data ConfigCache = ConfigCache { root :: Text, baseCfg :: BaseConfig }
 
 instance Functor Worth where
     fmap f (Required a) = Required (f a)
