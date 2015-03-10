@@ -12,8 +12,7 @@
 
 module Data.Configurator.Types.Internal
     (
-      BaseConfig(..)
-    , ConfigCache(..)
+      ConfigCache(..)
     , Configured(..)
     , AutoConfig(..)
     , Worth(..)
@@ -59,16 +58,13 @@ instance (Hashable a) => Hashable (Worth a) where
 
 -- | Global configuration data.  This is the top-level config from which
 -- 'Config' values are derived by choosing a root location.
-data BaseConfig = BaseConfig {
+data ConfigCache = ConfigCache {
       cfgAuto :: Maybe AutoConfig
     , cfgPaths :: IORef [(Name, Worth Path)]
     -- ^ The files from which the 'Config' was loaded.
     , cfgMap :: IORef (CB.CritBit Name Value)
     , cfgSubs :: IORef (H.HashMap Pattern [ChangeHandler])
     }
-
--- | Configuration data.
-data ConfigCache = ConfigCache { root :: Text, baseCfg :: BaseConfig }
 
 instance Functor Worth where
     fmap f (Required a) = Required (f a)
