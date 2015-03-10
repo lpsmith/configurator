@@ -78,7 +78,6 @@ import Data.Text.Lazy.Builder.RealFloat (realFloat)
 import Prelude hiding (lookup)
 import System.Environment (getEnv)
 import System.IO (hPutStrLn, stderr)
-import System.IO.Unsafe (unsafePerformIO)
 import System.Posix.Types (EpochTime, FileOffset)
 import System.PosixCompat.Files (fileSize, getFileStatus, modificationTime)
 import qualified Control.Exception as E
@@ -386,12 +385,12 @@ notifySubscribers BaseConfig{..} m m' subs = H.foldrWithKey go (return ()) subs
     forM_ (matching changedOrGone) $ \(n',v) -> mapM_ (notify p n' v) acts
 
 -- | A completely empty configuration.
-empty :: ConfigCache
-empty = ConfigCache "" $ unsafePerformIO $ do
+empty :: IO ConfigCache
+empty = do
           p <- newIORef []
           m <- newIORef CB.empty
           s <- newIORef H.empty
-          return BaseConfig {
+          return $! ConfigCache "" BaseConfig {
                        cfgAuto = Nothing
                      , cfgPaths = p
                      , cfgMap = m
