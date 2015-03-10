@@ -38,7 +38,6 @@ module Data.Configurator
     , autoReload
     , autoReloadGroups
     , autoConfig
-    , empty
     -- * Lookup functions
     , lookup
     , lookupDefault
@@ -367,20 +366,6 @@ notifySubscribers ConfigCache{..} m m' subs = H.foldrWithKey go (return ()) subs
     let matching = filter (T.isPrefixOf n . fst)
     forM_ (matching new) $ \(n',v) -> mapM_ (notify p n' (Just v)) acts
     forM_ (matching changedOrGone) $ \(n',v) -> mapM_ (notify p n' v) acts
-
--- | A completely empty configuration.
-empty :: IO ConfigCache
-empty = do
-          p <- newIORef []
-          m <- newIORef CB.empty
-          s <- newIORef H.empty
-          return $! ConfigCache {
-                       cfgAuto = Nothing
-                     , cfgPaths = p
-                     , cfgMap = m
-                     , cfgSubs = s
-                     }
-{-# NOINLINE empty #-}
 
 -- $format
 --
