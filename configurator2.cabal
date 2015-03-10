@@ -93,7 +93,7 @@ test-suite tests
     HUnit,
     base,
     bytestring,
-    configurator,
+    configurator2,
     directory,
     filepath,
     test-framework,

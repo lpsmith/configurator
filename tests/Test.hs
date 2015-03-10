@@ -37,14 +37,14 @@ tests =
     , testCase "reload" reloadTest
     ]
 
-withLoad :: FilePath -> (Config -> IO ()) -> IO ()
+withLoad :: FilePath -> (ConfigCache -> IO ()) -> IO ()
 withLoad name t = do
     mb <- try $ load (testFile name)
     case mb of
         Left (err :: SomeException) -> assertFailure (show err)
         Right cfg -> t cfg
 
-withReload :: FilePath -> ([Maybe FilePath] -> Config -> IO ()) -> IO ()
+withReload :: FilePath -> ([Maybe FilePath] -> ConfigCache -> IO ()) -> IO ()
 withReload name t = do
     tmp   <- getTemporaryDirectory
     temps <- forM (testFile name) $ \f -> do
