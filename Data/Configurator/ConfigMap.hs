@@ -58,6 +58,7 @@ foldPlan empty union lookup = loop
 
 
 type ConfigMap a = ConfigPlan (CB.CritBit Text a)
+type Config = ConfigMap Value
 
 subassocs :: Text -> ConfigMap a -> [(Text,a)]
 subassocs key c = subassocs_ ((CB.assocs .) . submap) key c

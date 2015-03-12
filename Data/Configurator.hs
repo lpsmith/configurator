@@ -55,7 +55,7 @@ module Data.Configurator
     , addGroupsToConfig
     -- * Helper functions
     , display
-    , getMap
+    , readConfig
     ) where
 
 import Control.Applicative ((<$>))
@@ -65,6 +65,7 @@ import Control.Monad (foldM, forM, forM_, join, when, msum)
 import Data.Configurator.Instances ()
 import Data.Configurator.Parser (interp, topLevel)
 import Data.Configurator.Types.Internal
+import Data.Configurator.ConfigMap(ConfigPlan(ConfigPlan), Config)
 import Data.IORef (atomicModifyIORef, newIORef, readIORef)
 import Data.List (tails)
 import Data.Maybe (fromMaybe, isJust)
@@ -244,9 +245,9 @@ lookupDefault def cfg name = fromMaybe def <$> lookup cfg name
 display :: ConfigCache -> IO ()
 display ConfigCache{..} = print =<< readIORef cfgMap
 
--- | Fetch the 'H.HashMap' that maps names to values.
-getMap :: ConfigCache -> IO (CB.CritBit Name Value)
-getMap = readIORef . cfgMap
+-- | Read the current configuration stored in the cache.
+readConfig :: ConfigCache -> IO Config
+readConfig = (ConfigPlan <$>) . readIORef . cfgMap
 
 flatten :: [(Name, Worth Path)]
         -> H.HashMap (Worth Path) [Directive]
