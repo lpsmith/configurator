@@ -179,7 +179,7 @@ data ConfigErrorWhy
 type RMW r w a = r -> (Maybe a, w)
 
 
--- | A @'ConfigParserM' a@ computation produces a value of type @'Maybe' a@ 
+-- | A @'ConfigParserM' a@ computation produces a value of type @'Maybe' a@
 --   from a given 'Config',  in addition to a list of diagnostic messages
 --   which may be interpreted as warnings or errors as deemed appropriate.
 --   Errors are cre
@@ -201,8 +201,8 @@ instance Monad ConfigParserM where
                                Just a  -> let (mb, w') = unConfigParserM (k a) r
                                            in (mb, w <> w')
 
--- | Actions of type `ConfigParserA` will continue to produce errors and/or
---   warnings that 
+-- | After an error,  actions of type 'ConfigParserA' will continue to
+--   run in order to produce more error messages.
 
 newtype ConfigParserA a
     = ConfigParserA { unConfigParserA :: RMW Config (DList ConfigParseError) a }
@@ -213,6 +213,36 @@ instance Applicative ConfigParserA where
     f <*> a = ConfigParserA $ \r -> let (mf, w ) = unConfigParserA f r
                                         (ma, w') = unConfigParserA a r
                                      in (mf <*> ma, w <> w')
+
+
+
+{--
+--- There are at least three obvious "implementations" of <|> on ConfigParser
+--- TODO: check alternative laws and pick an appropriate instance for each
+
+instance Alternative ConfigParserM where
+    empty   = ConfigParserM $ \_ -> (Nothing, mempty)
+    f <|> g = ConfigParserM $ \r ->
+                  case unConfigParserM m0 r of
+                    (Nothing, _errs0) -> unConfigParserM m1 r
+                    res -> res
+
+instance Alternative ConfigParserA where
+    empty   = ConfigParserA $ \_ -> (Nothing, mempty)
+    f <|> g = ConfigParserA $ \r -> let (mf, w ) = unConfigParserA f r
+                                        (mg, w') = unConfigParserA g r
+                                     in (mf <|> mg, w <> w')
+
+
+instance Alternative ConfigParserA where
+    empty   = ConfigParserA $ \_ -> (Nothing, mempty)
+    f <|> g = ConfigParserA $ \r -> let (mf, w ) = unConfigParserA f r
+                                        (mg, w') = unConfigParserA g r
+                                     in case mf of
+                                          (Just f) -> (mf, w)
+                                          Nothing  -> (mg, w <> w')
+
+--}
 
 -- |  The purpose of this function is to make it convenient to use do-notation
 --    with 'ConfigParserA',  either by defining a Monad instance or locally
@@ -234,7 +264,7 @@ unsafeBind m k = ConfigParserA $ \r ->
 class Applicative m => ConfigParser m where
     configParser_   :: RMW Config (DList ConfigParseError) a -> m a
     unConfigParser_ :: m a -> RMW Config (DList ConfigParseError) a
-    
+
 instance ConfigParser ConfigParserM where
     configParser_   = ConfigParserM
     unConfigParser_ = unConfigParserM
@@ -265,9 +295,11 @@ parserA (ConfigParserA m) = configParser_ m
 required :: (ConfigParser m, Configured a, Typeable a) => Name -> m a
 required name = requiredPred name (const True)
 
+
 requiredPred :: (ConfigParser m, Configured a, Typeable a)
              => Name -> (a -> Bool) -> m a
 requiredPred name p = parseField name Nothing Nothing p
+
 
 optional :: (ConfigParser m, Configured a, Typeable a, Show a)
          => Name -> a -> m a
