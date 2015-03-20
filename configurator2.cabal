@@ -75,7 +75,7 @@ library
     ghc-options: -Werror
     ghc-prof-options: -auto-all
 
-  ghc-options:      -Wall
+  ghc-options:      -Wall -fno-warn-name-shadowing
 
 source-repository head
   type:     git
