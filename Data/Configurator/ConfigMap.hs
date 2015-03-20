@@ -6,6 +6,7 @@ module Data.Configurator.ConfigMap where
 
 import           Prelude hiding ((++),null)
 import           Control.Applicative
+import           Control.Monad (ap)
 -- import           Control.Arrow(first)
 import           Data.Maybe(mapMaybe)
 import           Data.Monoid(Monoid(..),(<>))
@@ -175,114 +176,123 @@ data ConfigErrorWhy
     | PredicateFailed
       deriving (Eq, Ord, Show, Enum, Bounded)
 
-newtype RMW r w a = RMW { runRMW :: r -> (Maybe a, w) }
-    deriving (Typeable, Functor)
-
-instance (Monoid w) => Applicative (RMW r w) where
-    pure x  = RMW $ \_ -> (pure x, mempty)
-    f <*> a = RMW $ \c -> let (mf, w ) = runRMW f c
-                              (ma, w') = runRMW a c
-                           in (mf <*> ma, w <> w')
-
--- |  The purpose of this function is to make it convenient to declare
---    a 'Monad' instance for 'ConfigParser' in order to use do-notation.
---    Be warned that this is an abuse.   A safe way to use this
---    function would be to treat is as applicative-do notation.  A safer
---    alternative would be to use the @applicative-quoters@ package
---    and not use this function at all.
-
-unsafeBind :: Monoid w => RMW r w a -> (a -> RMW r w b) -> RMW r w b
-unsafeBind m k =
-    RMW $ \r ->
-        case runRMW m r of
-          (Nothing, w) -> let (_, w') = runRMW (k undefined) r
-                           in (Nothing, w <> w')
-          (Just a,  w) -> let (mb, w') = runRMW (k a) r
-                           in (mb, w <> w')
-
-safeBind :: Monoid w => RMW r w a -> (a -> RMW r w b) -> RMW r w b
-safeBind m k =
-    RMW $ \r ->
-        let (ma, w ) = runRMW m r
-            (mb, w') = case ma of
-                         Nothing -> (Nothing, mempty)
-                         Just a  -> runRMW (k a) r
-         in (mb, w <> w')
-
-{--
-newtype RMWM r w a = RMWM { runRMWM :: RMW r w a } deriving (Typeable, Functor)
-
-instance Monoid w => Applicative (RMWM r w) where
-    pure x = RMWM (pure x)
-    (<*>)  = ap
-
-instance Monoid w => Monad (RMWM r w) where
-    return = pure
-    m >>= f = RMWM ( runRMWM m >>= \a -> runRMWM (f a) )
---}
-
-type ConfigParser  =  RMW (ConfigMap Value) (DList ConfigParseError)
-
--- type ConfigParserM = RMWM (ConfigMap Value) (DList ConfigError)
-
-withRMW :: Monoid w
-        => (r -> r') -> RMW r' w' a -> RMW r w (Maybe a, w')
-withRMW f m = RMW $ \r -> (Just (runRMW m (f r)), mempty)
-
-{--
-class ConfigP m where
-  withConfig :: (ConfigMap Value -> ConfigMap Value)
-             -> m a -> m (Maybe a, DList ConfigError)
-  required :: Configured a => Name -> m a
-  optional :: Configured a => Name -> a -> m a
-  optionalPred :: Configured a => Name -> a -> (a -> Bool) -> m a
-
-instance ConfigP ConfigParser where
-  withConfig = withRMW
-  required name
-      = RMW $ \c ->
-          case CM.lookup name config of
---}
-
-withConfig :: (ConfigMap Value -> ConfigMap Value)
-           -> ConfigParser a -> ConfigParser (Maybe a, DList ConfigParseError)
-withConfig = withRMW
+type RMW r w a = r -> (Maybe a, w)
 
 
-getLookupPlan :: Name -> ConfigPlan a -> DList Name
-getLookupPlan = foldPlan DL.empty (<>) (\k _ -> DL.singleton k)
+-- | A @'ConfigParserM' a@ computation produces a value of type @'Maybe' a@ 
+--   from a given 'Config',  in addition to a list of diagnostic messages
+--   which may be interpreted as warnings or errors as deemed appropriate.
+--   Errors are cre
 
-required :: (Configured a, Typeable a) => Name -> ConfigParser a
+newtype ConfigParserM a
+    = ConfigParserM { unConfigParserM :: RMW Config (DList ConfigParseError) a }
+      deriving (Typeable, Functor)
+
+instance Applicative ConfigParserM where
+    pure  = return
+    (<*>) = ap
+
+instance Monad ConfigParserM where
+    return a = ConfigParserM $ \_ -> (pure a, mempty)
+    m >>= k  = ConfigParserM $
+                   \r -> let (ma, w ) = unConfigParserM m r
+                          in case ma of
+                               Nothing -> (Nothing, w)
+                               Just a  -> let (mb, w') = unConfigParserM (k a) r
+                                           in (mb, w <> w')
+
+-- | Actions of type `ConfigParserA` will continue to produce errors and/or
+--   warnings that 
+
+newtype ConfigParserA a
+    = ConfigParserA { unConfigParserA :: RMW Config (DList ConfigParseError) a }
+      deriving (Typeable, Functor)
+
+instance Applicative ConfigParserA where
+    pure a  = ConfigParserA $ \_ -> (pure a, mempty)
+    f <*> a = ConfigParserA $ \r -> let (mf, w ) = unConfigParserA f r
+                                        (ma, w') = unConfigParserA a r
+                                     in (mf <*> ma, w <> w')
+
+-- |  The purpose of this function is to make it convenient to use do-notation
+--    with 'ConfigParserA',  either by defining a Monad instance or locally
+--    rebinding '(>>=)'.    Be warned that this is an abuse,  and incorrect
+--    usage can result in exceptions.   A safe way to use this function
+--    would be to treat is as applicative-do notation.  A safer alternative
+--    would be to use the @applicative-quoters@ package and not use this
+--    function at all.
+
+unsafeBind :: ConfigParserA a -> (a -> ConfigParserA b) -> ConfigParserA b
+unsafeBind m k = ConfigParserA $ \r ->
+                   case unConfigParserA m r of
+                     (Nothing, w) -> let (_, w')  = unConfigParserA (k err) r
+                                      in (Nothing, w <> w')
+                     (Just a,  w) -> let (mb, w') = unConfigParserA (k a) r
+                                      in (mb, w <> w')
+  where err = error "unsafeBind on ConfigParserA used incorrectly"
+
+class Applicative m => ConfigParser m where
+    configParser_   :: RMW Config (DList ConfigParseError) a -> m a
+    unConfigParser_ :: m a -> RMW Config (DList ConfigParseError) a
+    
+instance ConfigParser ConfigParserM where
+    configParser_   = ConfigParserM
+    unConfigParser_ = unConfigParserM
+
+instance ConfigParser ConfigParserA where
+    configParser_   = ConfigParserA
+    unConfigParser_ = unConfigParserA
+
+runParser :: ConfigParser m => m a -> Config -> (Maybe a, [ConfigParseError])
+runParser m conf = let (ma, errs) = unConfigParser_ m conf
+                    in (ma, DL.toList errs)
+
+runParserA :: ConfigParserA a -> Config -> (Maybe a, [ConfigParseError])
+runParserA = runParser
+
+runParserM :: ConfigParserM a -> Config -> (Maybe a, [ConfigParseError])
+runParserM = runParser
+
+localConfig :: ConfigParser m => (Config -> Config) -> m a -> m a
+localConfig f m = configParser_ (\r -> unConfigParser_ m (f r))
+
+parserM :: ConfigParser m => ConfigParserM a -> m a
+parserM (ConfigParserM m) = configParser_ m
+
+parserA :: ConfigParser m => ConfigParserA a -> m a
+parserA (ConfigParserA m) = configParser_ m
+
+required :: (ConfigParser m, Configured a, Typeable a) => Name -> m a
 required name = requiredPred name (const True)
 
-requiredPred :: forall a. (Configured a, Typeable a)
-             => Name -> (a -> Bool) -> ConfigParser a
-requiredPred name pred = parseField name Nothing Nothing pred
+requiredPred :: (ConfigParser m, Configured a, Typeable a)
+             => Name -> (a -> Bool) -> m a
+requiredPred name p = parseField name Nothing Nothing p
 
-optional :: forall a. (Configured a, Typeable a, Show a)
-         => Name -> a -> ConfigParser a
+optional :: (ConfigParser m, Configured a, Typeable a, Show a)
+         => Name -> a -> m a
 optional name def = optionalPred name def (const True)
 
 
-optionalPred :: forall a. (Configured a, Typeable a, Show a)
-             => Name -> a -> (a -> Bool) -> ConfigParser a
-optionalPred name def pred = parseField name (Just def) (Just (show def)) pred
+optionalPred :: (ConfigParser m, Configured a, Typeable a, Show a)
+             => Name -> a -> (a -> Bool) -> m a
+optionalPred name def p = parseField name (Just def) (Just (show def)) p
 
 
-parseField :: forall a. (Configured a, Typeable a)
-             => Name -> Maybe a -> Maybe String -> (a -> Bool) -> ConfigParser a
-parseField name mdef mdefstr pred =
-    RMW $ \c ->
+parseField :: forall m a. (ConfigParser m, Configured a, Typeable a)
+             => Name -> Maybe a -> Maybe String -> (a -> Bool) -> m a
+parseField name mdef mdefstr p =
+    configParser_ $ \c ->
         case lookupWithName name c of
           Nothing -> (mdef, DL.singleton (miss_err c))
           Just (name', v) ->
               case convert v of
                 Nothing -> (mdef, DL.singleton (conv_err name' v))
-                Just v' -> if pred v'
+                Just v' -> if p v'
                            then (Just v', mempty)
                            else (mdef, DL.singleton (pred_err name' v))
   where
-     miss_err c 
+     miss_err c
          = ConfigParseError {
              configErrorKeys = DL.toList (getLookupPlan name c),
              configErrorVal  = Nothing,
@@ -290,7 +300,7 @@ parseField name mdef mdefstr pred =
              configErrorDef  = mdefstr,
              configErrorWhy  = Missing
            }
-     conv_err name' v 
+     conv_err name' v
          = ConfigParseError {
              configErrorKeys = [name'],
              configErrorVal  = Just v,
@@ -298,7 +308,7 @@ parseField name mdef mdefstr pred =
              configErrorDef  = mdefstr,
              configErrorWhy  = ConversionError
            }
-     pred_err name' v 
+     pred_err name' v
          = ConfigParseError {
              configErrorKeys = [name'],
              configErrorVal  = Just v,
@@ -307,57 +317,5 @@ parseField name mdef mdefstr pred =
              configErrorWhy  = PredicateFailed
            }
 
-
-{--
-
-
-
-
-
-
-instance Applicative ConfigParser where
-    pure x = ConfigParser $ \_ -> (Just x,mempty)
-    f <*> a = ConfigParser $ \c -> let !(mf,errs ) = runParser f c
-                                        (ma,errs') = runParser a c
-                                    in  (mf <*> ma, errs <> errs')
-
-
-
-unsafeBind :: ConfigParser a -> (a -> ConfigParser b) -> ConfigParser b
-unsafeBind m f =
-    ConfigParser $ \c ->
-        case runParser m c of
-          (Nothing, errs) -> let (_, errs') = runParser (f errmsg)
-                              in (Nothing, errs ++ errs')
-          (Just a,  errs) -> let (mb,errs') = runParser (f a)
-                              in (mb, errs ++ errs')
-  where
-    errmsg = error "ConfigParser internal error"
-
-
-safeBind :: ConfigParser a -> (a -> ConfigParser b) -> ConfigParser b
-safeBind m f =
-    ConfigParser $ \c ->
-        let (a, errs ) = runParser m c
-            (b, errs') = runParser (f a) c
-         in case runParser m c of
-              (Nothing, errs) -> (Nothing, errs)
-              (Just a,  errs) -> let (mb,errs') = runParser (f a)
-                                  in (mb, errs <> errs')
-
-newtype ConfigParserM a
-    = ConfigParserM {
-        runConfigParserM :: ConfigParser a
-      } deriving (Typeable, Functor)
-
-instance Applicative ConfigParserM where
-    pure a = ConfigParserM (pure a)
-    (<*>) = ap
-
-instance Monad ConfigParserM where
-    return = pure
-    m >>= f = ConfigParserM (runConfigParserM m `safeBind` \a ->
-                                 runConfigParserM (f a))
-
-
---}
+getLookupPlan :: Name -> ConfigPlan a -> DList Name
+getLookupPlan = foldPlan DL.empty (<>) (\k _ -> DL.singleton k)
