@@ -292,6 +292,10 @@ parserM (ConfigParserM m) = configParser_ m
 parserA :: ConfigParser m => ConfigParserA a -> m a
 parserA (ConfigParserA m) = configParser_ m
 
+recover :: ConfigParser m => m a -> m (Maybe a)
+recover m = configParser_ $ \r -> let (ma, errs) = unConfigParser_ m r
+                                   in (Just ma, errs)
+
 required :: (ConfigParser m, Configured a, Typeable a) => Name -> m a
 required name = requiredPred name (const True)
 
