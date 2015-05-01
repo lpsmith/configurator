@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
--- Module:      Data.Configurator.Parser
+-- Module:      Data.Configurator.Syntax
 -- Copyright:   (c) 2011 MailRank, Inc.
 -- License:     BSD3
 -- Maintainer:  Bryan O'Sullivan <bos@serpentine.com>
@@ -10,7 +10,7 @@
 --
 -- A parser for configuration files.
 
-module Data.Configurator.Parser
+module Data.Configurator.Syntax
     (
       topLevel
     , interp

@@ -55,7 +55,7 @@ library
 
   other-modules:
     Data.Configurator.Instances
-    Data.Configurator.Parser
+    Data.Configurator.Syntax
     Data.Configurator.Types.Internal
 
   build-depends:

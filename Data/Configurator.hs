@@ -63,7 +63,7 @@ import Control.Concurrent (ThreadId, forkIO, threadDelay)
 import Control.Exception (SomeException, evaluate, handle, throwIO, try)
 import Control.Monad (foldM, forM, forM_, join, when, msum)
 import Data.Configurator.Instances ()
-import Data.Configurator.Parser (interp, topLevel)
+import Data.Configurator.Syntax (interp, topLevel)
 import Data.Configurator.Types.Internal
 import Data.Configurator.ConfigMap(ConfigPlan(ConfigPlan), Config)
 import Data.IORef (atomicModifyIORef, newIORef, readIORef)
