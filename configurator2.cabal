@@ -51,6 +51,7 @@ library
   exposed-modules:
     Data.Configurator
     Data.Configurator.ConfigMap
+    Data.Configurator.Parser
     Data.Configurator.Types
 
   other-modules:
