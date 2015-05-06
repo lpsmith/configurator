@@ -2,7 +2,7 @@
 {-# LANGUAGE BangPatterns, ViewPatterns, TupleSections #-}
 {-# LANGUAGE DeriveFunctor, DeriveDataTypeable         #-}
 
-module Data.Configurator.ConfigMap where
+module Data.Configurator.Config where
 
 import           Prelude hiding ((++),null)
 import           Control.Applicative

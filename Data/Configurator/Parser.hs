@@ -31,7 +31,7 @@ import           Data.Monoid(Monoid(..),(<>))
 -- import qualified Data.Text as T
 import           Data.Typeable
 
-import           Data.Configurator.ConfigMap
+import           Data.Configurator.Config
 
 
 data ConfigParseError = ConfigParseError {

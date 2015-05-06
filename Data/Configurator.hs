@@ -65,7 +65,7 @@ import Control.Monad (foldM, forM, forM_, join, when, msum)
 import Data.Configurator.Instances ()
 import Data.Configurator.Syntax (interp, topLevel)
 import Data.Configurator.Types.Internal
-import Data.Configurator.ConfigMap(ConfigPlan(ConfigPlan), Config)
+import Data.Configurator.Config(ConfigPlan(ConfigPlan), Config)
 import Data.IORef (atomicModifyIORef, newIORef, readIORef)
 import Data.List (tails)
 import Data.Maybe (fromMaybe, isJust)

@@ -50,7 +50,7 @@ flag developer
 library
   exposed-modules:
     Data.Configurator
-    Data.Configurator.ConfigMap
+    Data.Configurator.Config
     Data.Configurator.Parser
     Data.Configurator.Types
 
