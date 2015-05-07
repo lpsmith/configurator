@@ -39,6 +39,7 @@ import Data.String (IsString(..))
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Typeable (Typeable)
+import Data.Scientific(Scientific)
 import Prelude hiding (lookup)
 import qualified Data.HashMap.Lazy as H
 import qualified Data.CritBit.Map.Lazy as CB
@@ -206,7 +207,7 @@ data Value = Bool Bool
            --
            -- * @\\u@/xxxx/@\\u@/xxxx/ - Unicode character (as two
            --   UTF-16 surrogates)
-           | Number Rational
+           | Number Scientific
            -- ^ Integer.
            | List [Value]
            -- ^ Heterogeneous list.  Represented in a configuration

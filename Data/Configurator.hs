@@ -66,11 +66,12 @@ import Data.Configurator.Instances ()
 import Data.Configurator.Syntax (interp, topLevel)
 import Data.Configurator.Types.Internal
 import Data.Configurator.Config(ConfigPlan(ConfigPlan), Config)
+import Data.Int (Int64)
 import Data.IORef (atomicModifyIORef, newIORef, readIORef)
 import Data.List (tails)
 import Data.Maybe (fromMaybe, isJust)
 import Data.Monoid (mconcat)
-import Data.Ratio (denominator, numerator)
+import Data.Scientific ( toBoundedInteger, toRealFloat ) 
 import Data.Text.Lazy.Builder (fromString, fromText, toLazyText)
 import Data.Text.Lazy.Builder.Int (decimal)
 import Data.Text.Lazy.Builder.RealFloat (realFloat)
@@ -293,11 +294,10 @@ interpolate pfx s env
   interpret (Interpolate name) =
       case lookupEnv name of
         Just (String x) -> return (fromText x)
-        Just (Number r)
-            | denominator r == 1 -> return (decimal $ numerator r)
-            | otherwise -> return $ realFloat (fromRational r :: Double)
-                           -- TODO: Use a dedicated Builder for Rationals instead of
-                           -- using realFloat on a Double.
+        Just (Number r) -> 
+            case toBoundedInteger r :: Maybe Int64 of
+              Just n  -> return (decimal n)
+              Nothing -> return (realFloat (toRealFloat r :: Double))
         Just _          -> error "type error"
         _ -> do
           e <- try . getEnv . T.unpack $ name

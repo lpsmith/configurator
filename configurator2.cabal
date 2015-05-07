@@ -60,7 +60,7 @@ library
     Data.Configurator.Types.Internal
 
   build-depends:
-    attoparsec >= 0.10.0.2,
+    attoparsec >= 0.11.3.0,
     base == 4.*,
     bytestring,
     critbit,
@@ -68,6 +68,7 @@ library
     directory,
     data-ordlist,
     hashable,
+    scientific,
     text >= 0.11.1.0,
     unix-compat,
     unordered-containers

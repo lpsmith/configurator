@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
--- Module:      Data.Configurator.Syntax
+-- Module:      Data.Configurator.Syntaxxx
 -- Copyright:   (c) 2011 MailRank, Inc.
 -- License:     BSD3
 -- Maintainer:  Bryan O'Sullivan <bos@serpentine.com>
@@ -90,7 +90,7 @@ value = mconcat [
         , string "true" *> pure (Bool True)
         , string "false" *> pure (Bool False)
         , String <$> string_
-        , Number <$> rational
+        , Number <$> scientific
         , List <$> brackets '[' ']'
                    ((value <* skipLWS) `sepBy` (char ',' <* skipLWS))
         ]
