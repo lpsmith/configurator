@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
--- Module:      Data.Configurator.Syntaxxx
+-- Module:      Data.Configurator.Syntax
 -- Copyright:   (c) 2011 MailRank, Inc.
 -- License:     BSD3
 -- Maintainer:  Bryan O'Sullivan <bos@serpentine.com>
