@@ -51,15 +51,17 @@ library
   exposed-modules:
     Data.Configurator
     Data.Configurator.Config
+    Data.Configurator.Config.Internal
     Data.Configurator.Parser
     Data.Configurator.Parser.Internal
     Data.Configurator.Types
 
   other-modules:
+    Data.Configurator.Config.Implementation
     Data.Configurator.Instances
+    Data.Configurator.Parser.Implementation
     Data.Configurator.Syntax
     Data.Configurator.Types.Internal
-    Data.Configurator.Parser.Implementation
 
   build-depends:
     attoparsec >= 0.11.3.0,

@@ -65,7 +65,7 @@ import Control.Monad (foldM, forM, forM_, join, when, msum)
 import Data.Configurator.Instances ()
 import Data.Configurator.Syntax (interp, topLevel)
 import Data.Configurator.Types.Internal
-import Data.Configurator.Config(ConfigPlan(ConfigPlan), Config)
+import Data.Configurator.Config.Internal(ConfigPlan(ConfigPlan), Config(Config))
 import Data.Int (Int64)
 import Data.IORef (atomicModifyIORef, newIORef, readIORef)
 import Data.List (tails)
@@ -248,7 +248,7 @@ display ConfigCache{..} = print =<< readIORef cfgMap
 
 -- | Read the current configuration stored in the cache.
 readConfig :: ConfigCache -> IO Config
-readConfig = (ConfigPlan <$>) . readIORef . cfgMap
+readConfig = (Config . ConfigPlan <$>) . readIORef . cfgMap
 
 flatten :: [(Name, Worth Path)]
         -> H.HashMap (Worth Path) [Directive]

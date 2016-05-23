@@ -42,7 +42,7 @@ import           Data.DList (DList)
 import qualified Data.DList as DL
 import           Data.Monoid(Monoid(..),(<>))
 import           Data.Typeable
-import           Data.Configurator.Config
+import           Data.Configurator.Config.Internal
 import           Data.Configurator.Parser.Implementation
 
 #if __GLASGOW_HASKELL__ >= 800
@@ -120,7 +120,7 @@ optionalPred name def p = parseField name (Just def) (Just (show def)) p
 parseField :: forall m a. (ConfigParser m, Configured a, Typeable a)
            => Name -> Maybe a -> Maybe String -> (a -> Bool) -> m a
 parseField name mdef mdefstr p =
-    configParser_ $ \c ->
+    configParser_ $ \(Config c) ->
         case lookupWithName name c of
           Nothing -> (mdef, DL.singleton (miss_err c))
           Just (name', v) ->
