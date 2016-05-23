@@ -33,7 +33,7 @@ import qualified Data.Text as T
 
 data ConfigPlan a
     = Subconfig   Text (ConfigPlan a)
-    | Group       Text (ConfigPlan a)
+    | Superconfig Text (ConfigPlan a)
     | Union       (ConfigPlan a) (ConfigPlan a)
     | ConfigPlan  a
     | Empty
@@ -51,13 +51,13 @@ stripPrefix pre key = T.stripPrefix pre key >>= T.stripPrefix "."
 foldPlan :: b -> (b -> b -> b) -> (Text -> a -> b) -> Text -> ConfigPlan a -> b
 foldPlan empty union lookup = loop
   where
-    loop key  (Subconfig  pre pl ) = loop (addPrefix pre key) pl
-    loop key  (Group      pre pl ) = case stripPrefix pre key of
-                                       Nothing   -> empty
-                                       Just key' -> loop key' pl
-    loop key  (Union      pl1 pl2) = loop key pl2 `union` loop key pl1
-    loop key  (ConfigPlan a      ) = lookup key a
-    loop _key  Empty               = empty
+    loop key  (Subconfig   pre pl ) = loop (addPrefix pre key) pl
+    loop key  (Superconfig pre pl ) = case stripPrefix pre key of
+                                        Nothing   -> empty
+                                        Just key' -> loop key' pl
+    loop key  (Union       pl1 pl2) = loop key pl2 `union` loop key pl1
+    loop key  (ConfigPlan  a      ) = lookup key a
+    loop _key  Empty                = empty
 {-# INLINE foldPlan #-}
 
 
@@ -65,7 +65,7 @@ type ConfigMap a = ConfigPlan (CB.CritBit Text a)
 newtype Config = Config (ConfigMap Value)
 
 subassocs :: Text -> ConfigMap a -> [(Text,a)]
-subassocs key c = subassocs_ ((CB.assocs .) . submap) key c
+subassocs key c = subassocs_ subassocsMap key c
 
 lookup :: Text -> ConfigMap a -> Maybe a
 lookup = foldPlan Nothing (<|>) CB.lookup
@@ -87,7 +87,7 @@ subassocs_ subassocs = loop
     loop !_key Empty = []
     loop !key (Subconfig   pre pl) =
         stripPrefixes pre (loop (addPrefix pre key) pl)
-    loop !key (Group pre pl) =
+    loop !key (Superconfig pre pl) =
         case T.commonPrefixes pre key of
           Nothing
               | T.null pre -> loop key pl
@@ -103,6 +103,7 @@ subassocs_ subassocs = loop
         OL.unionBy (compare `on` fst) (loop key pl2) (loop key pl1)
     loop !key (ConfigPlan map) = subassocs key map
 
+
 submap :: Text -> CritBit Text a -> CritBit Text a
 submap key map
     | T.null key = map
@@ -110,8 +111,23 @@ submap key map
                        (lt, _ ) = CB.split (key <> ".~") gt
                     in lt
 
+subassocsMap :: Text -> CritBit Text a -> [(Text, a)]
+subassocsMap key map = CB.assocs (submap key map)
+
 null :: ConfigPlan (CritBit Text a) -> Bool
-null = foldPlan True (&&) ((CB.null .) . submap) T.empty
+null = foldPlan True (&&) nullSubmap T.empty
+
+nullSubmap :: Text -> CritBit Text a -> Bool
+-- nullSubmap key map = CB.null (submap key map)
+nullSubmap key map =
+    if T.null key
+    then CB.null map
+    else case CB.lookupGT key map of
+           Nothing -> True
+           Just (key', _) ->
+               case stripPrefix key key' of
+                 Nothing -> False
+                 Just _  -> True
 
 subgroups :: Text -> ConfigMap a -> [Text]
 subgroups = loop
@@ -122,7 +138,7 @@ subgroups = loop
     loop !_key Empty = []
     loop !key (Subconfig   pre pl) =
         stripPrefixes pre (loop (addPrefix pre key) pl)
-    loop !key (Group pre pl) =
+    loop !key (Superconfig pre pl) =
         case T.commonPrefixes pre key of
           Nothing
               | T.null pre -> loop key pl
@@ -162,3 +178,50 @@ subgroupsMap pre_ map = loop (CB.lookupGT pre map)
                           then loop (CB.lookupGT key map)
                           else let key' = pre <> sfxa
                                 in key' : loop (CB.lookupGE (key' <> "/") map)
+
+
+union :: ConfigMap a -> ConfigMap a -> ConfigMap a
+union x y
+    | null x    = y
+    | null y    = x
+    | otherwise = Union x y
+
+commonPrefixes :: Text -> Text -> (Text, Text, Text)
+commonPrefixes a b = maybe (T.empty, a, b) id (T.commonPrefixes a b)
+
+subconfig :: Text -> ConfigMap a -> ConfigMap a
+subconfig = \k c -> if T.null k then c else loop k c
+  where
+    loop k c =
+        case c of
+          Empty -> Empty
+          Union a b -> union (loop k a) (loop k b)
+          Superconfig kk cc ->
+            if T.null kk
+            then loop k cc
+            else case commonPrefixes k kk of
+                   (_common, k', kk') ->
+                       if T.null k'
+                       then if T.null kk'
+                            then cc
+                            else case T.stripPrefix "." kk' of
+                                   Nothing   -> Empty
+                                   Just kk'' -> Superconfig kk'' cc
+                       else if T.null kk'
+                            then case T.stripPrefix "." k' of
+                                   Nothing   -> Empty
+                                   Just k''  -> loop k'' cc
+                            else Empty
+          ConfigPlan map ->
+            let map' = submap k map
+             in if CB.null map'
+                then Empty
+                else ConfigPlan map'
+          (Subconfig _ _) ->
+            let c' = Subconfig k c
+             in if null c'
+                then Empty
+                else c'
+
+superconfig :: Text -> ConfigPlan a -> ConfigPlan a
+superconfig = \k c -> if T.null k then c else Superconfig k c

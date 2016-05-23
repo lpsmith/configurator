@@ -6,15 +6,20 @@
 
 module Data.Configurator.Config
      ( Config
+     , empty
+     , null
      , lookup
      , lookupWithName
      , subgroups
      , subassocs
+     , union
+     , subconfig
+     , superconfig
      ) where
 
-import Prelude hiding (lookup)
+import Prelude hiding (lookup,null)
 import Data.Configurator.Types(Name,Value)
-import Data.Configurator.Config.Implementation(Config(..))
+import Data.Configurator.Config.Implementation(Config(..),ConfigPlan(Empty))
 import qualified Data.Configurator.Config.Implementation as C
 
 lookup :: Name -> Config -> Maybe Value
@@ -28,3 +33,18 @@ subgroups k (Config c) = C.subgroups k c
 
 subassocs :: Name -> Config -> [(Name,Value)]
 subassocs k (Config c) = C.subassocs k c
+
+empty :: Config
+empty =  Config Empty
+
+null :: Config -> Bool
+null (Config c) = C.null c
+
+union :: Config -> Config -> Config
+union (Config a) (Config b) = Config (C.union a b)
+
+subconfig :: Name -> Config -> Config
+subconfig key (Config c) = Config (C.subconfig key c)
+
+superconfig :: Name -> Config -> Config
+superconfig key (Config c) = Config (C.superconfig key c)
