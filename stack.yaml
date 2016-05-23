@@ -1,0 +1,7 @@
+resolver: lts-5.17
+
+packages:
+- '.'
+
+extra-deps:
+- critbit-0.2.0.0
