@@ -18,14 +18,21 @@ module Data.Configurator.Parser
     , ConfigParserM
     , ConfigError (..)
     , ConfigErrorWhy (..)
+    , Config
     , unsafeBind
     , runParser
     , runParserA
     , runParserM
     , parserA
     , parserM
+    , subassocs
+    , subgroups
     , askConfig
     , localConfig
+    , union
+    , subconfig
+    , superconfig
+    , empty
     , recover
     , required
     , requiredPred
@@ -36,13 +43,21 @@ module Data.Configurator.Parser
 
 import           Prelude hiding (null)
 
-import           Control.Applicative hiding (optional)
+import           Control.Applicative hiding (optional, empty)
 import           Data.Configurator.Types.Internal hiding (Group)
 import           Data.DList (DList)
 import qualified Data.DList as DL
 import           Data.Monoid(Monoid(..),(<>))
 import           Data.Typeable
-import           Data.Configurator.Config.Internal
+import           Data.Configurator.Config
+                   ( Config
+                   , union
+                   , subconfig
+                   , superconfig
+                   , empty
+                   )
+import qualified Data.Configurator.Config as C
+import qualified Data.Configurator.Config.Internal as CI
 import           Data.Configurator.Parser.Implementation
 
 #if __GLASGOW_HASKELL__ >= 800
@@ -69,6 +84,12 @@ unsafeBind m k = ConfigParserA $ \r ->
 runParser :: ConfigParser m => m a -> Config -> (Maybe a, [ConfigError])
 runParser m conf = let (ma, errs) = unConfigParser_ m conf
                     in (ma, DL.toList errs)
+
+subassocs :: ConfigParser m => Name -> m [(Name, Value)]
+subassocs t = configParser_ (\c -> (Just (C.subassocs t c), mempty))
+
+subgroups :: ConfigParser m => Name -> m [Name]
+subgroups t = configParser_ (\c -> (Just (C.subgroups t c), mempty))
 
 -- |  Returns the current 'Config' that the parser is operating on.
 --    This is perfectly analogous to 'Control.Monad.Reader.ask', however,
@@ -120,8 +141,8 @@ optionalPred name def p = parseField name (Just def) (Just (show def)) p
 parseField :: forall m a. (ConfigParser m, Configured a, Typeable a)
            => Name -> Maybe a -> Maybe String -> (a -> Bool) -> m a
 parseField name mdef mdefstr p =
-    configParser_ $ \(Config c) ->
-        case lookupWithName name c of
+    configParser_ $ \(CI.Config c) ->
+        case CI.lookupWithName name c of
           Nothing -> (mdef, DL.singleton (miss_err c))
           Just (name', v) ->
               case convert v of
@@ -155,5 +176,5 @@ parseField name mdef mdefstr p =
              configErrorWhy  = PredicateFailed
            }
 
-getLookupPlan :: Name -> ConfigPlan a -> DList Name
-getLookupPlan = foldPlan DL.empty (<>) (\k _ -> DL.singleton k)
+getLookupPlan :: Name -> CI.ConfigPlan a -> DList Name
+getLookupPlan = CI.foldPlan DL.empty (<>) (\k _ -> DL.singleton k)
