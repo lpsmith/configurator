@@ -71,7 +71,7 @@ import Data.IORef (atomicModifyIORef, newIORef, readIORef)
 import Data.List (tails)
 import Data.Maybe (fromMaybe, isJust)
 import Data.Monoid (mconcat)
-import Data.Scientific ( toBoundedInteger, toRealFloat ) 
+import Data.Scientific ( toBoundedInteger, toRealFloat )
 import Data.Text.Lazy.Builder (fromString, fromText, toLazyText)
 import Data.Text.Lazy.Builder.Int (decimal)
 import Data.Text.Lazy.Builder.RealFloat (realFloat)
@@ -294,7 +294,7 @@ interpolate pfx s env
   interpret (Interpolate name) =
       case lookupEnv name of
         Just (String x) -> return (fromText x)
-        Just (Number r) -> 
+        Just (Number r) ->
             case toBoundedInteger r :: Maybe Int64 of
               Just n  -> return (decimal n)
               Nothing -> return (realFloat (toRealFloat r :: Double))
@@ -327,7 +327,7 @@ loadOne path = do
                                    _          -> return []
     Right s -> do
             p <- evaluate (L.eitherResult $ L.parse topLevel s)
-                 `E.catch` \(e::ConfigError) ->
+                 `E.catch` \(e::ParseError) ->
                  throwIO $ case e of
                              ParseError _ err -> ParseError (worth path) err
             case p of

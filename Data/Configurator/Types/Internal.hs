@@ -21,7 +21,9 @@ module Data.Configurator.Types.Internal
     , Binding
     , Path
     , Directive(..)
+    , ParseError(..)
     , ConfigError(..)
+    , ConfigErrorWhy(..)
     , KeyError(..)
     , Interpolate(..)
     , Pattern(..)
@@ -38,7 +40,7 @@ import Data.List (isSuffixOf)
 import Data.String (IsString(..))
 import Data.Text (Text)
 import qualified Data.Text as T
-import Data.Typeable (Typeable)
+import Data.Typeable (Typeable, TypeRep)
 import Data.Scientific(Scientific)
 import Prelude hiding (lookup)
 import qualified Data.HashMap.Lazy as H
@@ -136,11 +138,28 @@ class Configured a where
 instance Configured a => Configured [a] where
     convert = convertList
 
--- | An error occurred while processing a configuration file.
-data ConfigError = ParseError FilePath String
-                   deriving (Show, Typeable)
+-- | An error occurred during the low-level parsing of a configuration file.
+data ParseError  = ParseError FilePath String
+                     deriving (Show, Typeable)
+
+instance Exception ParseError
+
+-- | An error (or warning) from a higher-level parser of a configuration file.
+data ConfigError = ConfigError {
+      configErrorKeys :: ![Name]
+    , configErrorVal  :: !(Maybe Value)
+    , configErrorType :: !TypeRep
+    , configErrorDef  :: !(Maybe String)
+    , configErrorWhy  :: !ConfigErrorWhy
+    } deriving (Eq, Show, Typeable)
 
 instance Exception ConfigError
+
+data ConfigErrorWhy
+    = Missing
+    | ConversionError
+    | PredicateFailed
+      deriving (Eq, Ord, Show, Enum, Bounded, Typeable)
 
 -- | An error occurred while lookup up the given 'Name'.
 data KeyError = KeyError Name

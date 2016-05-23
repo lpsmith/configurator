@@ -77,9 +77,9 @@ convertNumberToFractional (Number r) = Just $ fromRational r'
   where
     c  = coefficient    r
     e  = base10Exponent r
-    r' = if e >= 0 
+    r' = if e >= 0
          then (c * 10^e) % 1
-         else c % (10^(- e))    
+         else c % (10^(- e))
 convertNumberToFractional _ = Nothing
 
 instance Configured Double where

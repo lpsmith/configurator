@@ -52,12 +52,14 @@ library
     Data.Configurator
     Data.Configurator.Config
     Data.Configurator.Parser
+    Data.Configurator.Parser.Internal
     Data.Configurator.Types
 
   other-modules:
     Data.Configurator.Instances
     Data.Configurator.Syntax
     Data.Configurator.Types.Internal
+    Data.Configurator.Parser.Implementation
 
   build-depends:
     attoparsec >= 0.11.3.0,
