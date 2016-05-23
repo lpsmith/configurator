@@ -1,0 +1,12 @@
+.hg/
+_darcs/
+*~
+dist/
+*.prof
+*.hi
+*.o
+\#*\#
+.#*
+.cabal-sandbox/
+.stack-work/
+cabal.sandbox.config
