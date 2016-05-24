@@ -2,7 +2,7 @@
 ##What is this?
 
 This is a massively breaking revision of the application interface of
-configurator.   The configuration file syntax is backward compatible,
+[configurator].   The configuration file syntax is backward compatible,
 and mostly forward compatible as well.   This fork is not (yet?) intended
 for widespread public consumption.  Rather, this repo is being used as
 a stopgap measure in some of my own projects as well as a playground
@@ -138,7 +138,7 @@ useful for whatever purposes (logging, API endpoints, etc), that the
 event processor doesn't know about in advance.  Since `configurator`
 is tied down to `HashMap`,  the data structure offers no support for
 efficiently discovering these names.  In order to fix this,
-`configurator-ng` moved to [`critbit`][critbit] which allows us to
+`configurator-ng` moved to [`critbit`][critbit]. which allows us to
 efficently iterate over these keys (in alphabetical order).  So
 `configurator-ng` offers the following operator:
 
@@ -300,4 +300,5 @@ further applications this could enable,  such as:
    * more speculatively,  using this information to generate sample
      configuration files.
 
+ [configurator]: https://hackage.haskell.org/package/configurator
  [critbit]: https://hackage.haskell.org/package/critbit
