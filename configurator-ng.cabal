@@ -99,7 +99,7 @@ test-suite tests
     HUnit,
     base,
     bytestring,
-    configurator2,
+    configurator-ng,
     directory,
     filepath,
     test-framework,

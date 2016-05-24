@@ -36,7 +36,7 @@ directive :: Parser Directive
 directive =
   mconcat [
     string "import" *> skipLWS *> (Import <$> string_)
-  , string "#;" *> skipLWS *> (DirectiveComment <$> directive)
+  , string "#;" *> skipHWS *> (DirectiveComment <$> directive)
   , Bind <$> try (ident <* skipLWS <* char '=' <* skipLWS) <*> value
   , Group <$> try (ident <* skipLWS <* char '{' <* skipLWS)
           <*> directives <* skipLWS <* char '}'
@@ -74,14 +74,27 @@ skipHWS = scan Space go *> pure ()
         go Comment '\n'        = Nothing
         go Comment _           = Just Comment
 
+data IdentState = First | Follow
+
 ident :: Parser Name
 ident = do
-  n <- T.cons <$> satisfy isAlpha <*> A.takeWhile isCont
+  n <- scan First go
   when (n == "import") $
     throw (ParseError "" $ "reserved word (" ++ show n ++ ") used as identifier")
+  when (T.null n) $ fail "no identifier found"
+  when (T.last n == '.') $ fail "identifier must not end with a dot"
   return n
  where
-  isCont c = isAlphaNum c || c == '_' || c == '-'
+  go First c =
+      if isAlpha c
+      then Just Follow
+      else Nothing
+  go Follow c =
+      if isAlphaNum c || c == '_' || c == '-'
+      then Just Follow
+      else if c == '.'
+           then Just First
+           else Nothing
 
 value :: Parser Value
 value = mconcat [
