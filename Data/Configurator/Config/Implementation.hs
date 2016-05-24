@@ -223,5 +223,10 @@ subconfig = \k c -> if T.null k then c else loop k c
                 then Empty
                 else c'
 
-superconfig :: Text -> ConfigPlan a -> ConfigPlan a
-superconfig = \k c -> if T.null k then c else Superconfig k c
+superconfig :: Text -> ConfigMap a -> ConfigMap a
+superconfig k c =
+    if T.null k
+    then c
+    else if null c
+         then Empty
+         else Superconfig k c
