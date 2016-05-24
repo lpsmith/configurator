@@ -46,13 +46,13 @@ Thus,  we have taken `key0` and `key1` from two versions of the
 configuration files,  with a overall result that is not necessarily
 consistent with either version.
 
-There is a way to solve this race condition^\*, though it is by no
+There is a way to solve this race condition\*, though it is by no
 means convenient and it provides even less support for turning the
 result into configuration parameters:
 
     getMap :: Config -> IO (HashMap Text Value)
 
-This obtains a consistent^\* snapshot of the configuration,  from which
+This obtains a consistent\* snapshot of the configuration,  from which
 you can pull out multiple values.   But in addition to being
 less obvious and inconvenient,  the fact that the `HashMap` returned
 is not an abstract type makes it more difficult to modify the data
@@ -70,23 +70,23 @@ interface is as follows:
 
     runParser :: ConfigParser m => m a -> Config -> (Maybe a, [ConfigError])
 
+(Here,  `ConfigError` could be an error condition, or it might be more
+analogous to a warning or informational message;  thus a parser can
+return a result *and* some `ConfigError`s.)
+
 Finally,  we could define a `ConfigParser` to read from key1 and key2
-by writing
+by writing:
 
     getKeys :: ConfigParser m => m (Text, Int)
     getKeys = (,) <$> require "key0" <*> require "key1"
 
-(Here,  `ConfigError` could be an error condition, or it might be more
-analogous to a warning or informational message.)
-
-(\^*Commonly used filesystems are racey software artifacts,  so this
-is only consistent relative to filesystem reads.  It's important to
-point out that `getMap` only avoids introducing more race conditions,
-but for a complete solution, one would have to take care in the
-precise system calls used to manipulate the configuration
-file(s).  (Most popular text editors should be ok as far as the
-consistency of a single file, consistent reads of multiple files is
-trickier.))
+(\*It's important to point out that `getMap` only avoids introducing
+additional race conditions;  commonly used filesystems are racey
+software artifacts,  so this is only consistent relative to filesystem
+reads.  For a complete solution, one would have to take care in the
+precise filesystem calls used to manipulate the configuration file(s).
+Most popular text editors should be ok as far as the consistency of a
+single file, consistent reads of multiple files is trickier.)
 
 ### Configuration validation
 
@@ -108,24 +108,24 @@ configuration file to look something like this:
 event-sources {
     amazon-cloud {
         postgres {
-            host     = "cloudevents.mydomain.com"
-            port     = 5433
-            dbname   = "eventdb"
-            sslmode  = "verify-full"
-            sslcert  = "${HOME}/credentials/pgclient.crt"
-            sslkey   = "${HOME}/credentials/pgclient.key"
+            host    = "cloudevents.mydomain.com"
+            port    = 5433
+            dbname  = "eventdb"
+            sslmode = "verify-full"
+            sslcert = "${HOME}/credentials/pgclient.crt"
+            sslkey  = "${HOME}/credentials/pgclient.key"
         }
         heartbeat-interval = 15
         heartbeat-timeout  = 15
     }
     chicago-service-center {
         postgres {
-            host     = "pgevents.customerdomain.com"
-            port     = 5433
-            dbname   = "eventdb"
+            host    = "pgevents.customerdomain.com"
+            port    = 5433
+            dbname  = "eventdb"
             sslmode = "verify-full"
-            sslcert  = "${HOME}/credentials/pgclient.crt"
-            sslkey   = "${HOME}/credentials/pgclient.key"
+            sslcert = "${HOME}/credentials/pgclient.crt"
+            sslkey  = "${HOME}/credentials/pgclient.key"
         }
         heartbeat-interval = 15
         heartbeat-timeout  = 15
@@ -144,14 +144,13 @@ efficently iterate over these keys (in alphabetical order).  So
 
     subgroups :: ConfigParser m => Text -> m [Text]
 
-When evaluated in the context of the configuration above,  `subgroups`
-returns the non-empty value groupings of it's argument.
+`subgroups` returns the non-empty value groupings of it's argument,
+so for example when evaluated in the context of the configuration above:
 
     subgroups ""              ==> [ "event-sources" ]
 
     subgroups "event-sources" ==> [ "event-sources.amazon-cloud"
-                                  , "event-sources.chicago-service-center"
-                                  ]
+                                  , "event-sources.chicago-service-center" ]
 
 Another issue is that there's a lot of redundancy here,  so maybe we'd like to
 refactor the configuration file into something like this:
@@ -162,15 +161,15 @@ event-sources {
         postgres { host = "cloudevents.mydomain.com" }
     }
     chicago-call-center {
-        postgres { host = "pgevents.somedomain.com"  }
+        postgres { host = "pgevents.customerdomain.com" }
     }
     default {
         postgres {
-            port = 5433
-            dbname = "eventdb"
+            port    = 5433
+            dbname  = "eventdb"
             sslmode = "verify-full"
-            sslcert  = "${HOME}/credentials/pgclient.crt"
-            sslkey   = "${HOME}/credentials/pgclient.key"
+            sslcert = "${HOME}/credentials/pgclient.crt"
+            sslkey  = "${HOME}/credentials/pgclient.key"
         }
         heartbeat-interval = 15
         heartbeat-timeout  = 15
@@ -228,7 +227,7 @@ localConfig :: ConfigParser m => (Config -> Config) -> m a -> m a
 union :: Config -> Config -> Config
 
 -- | Restrict a configuration to a given group,  and remove that group
---   prefix from all key names
+--   prefix from all key names.
 subconfig :: Text -> Config -> Config
 
 -- | Add a group name as a prefix to all key names
@@ -237,7 +236,7 @@ superconfig :: Text -> Config -> Config
 
 Note that these operators are implemented "symbolically",  so that
 they run in sub-linear (Possibly `O(1)`?) time.  Instead,  the cost of
-these are paid for each (key,value) lookup.
+these are paid on each `(key,value)` lookup.
 
 As a convenience for this sort of use case, the configuration file
 syntax has been extended to include datum comments,  not unlike those
@@ -274,7 +273,9 @@ debounce notEq callback = do
     last_seen <- newIORef Nothing
     return $ \new -> do
         m_old <- readIORef last_seen
-        if   maybe True notEq m_old new
+        if   case m_old of
+               Nothing  -> True
+               Just old -> notEq old new
         then do
           writeIORef last_seen
           callback new
