@@ -129,11 +129,11 @@ instance Hashable Pattern where
 -- For an example of compatibility, a 'Value' of 'Bool' 'True' cannot
 -- be 'convert'ed to an 'Int'.
 class Configured a where
-    convert :: Value -> Maybe a
+    convert :: Maybe Value -> Maybe a
 
-    convertList :: Value -> Maybe [a]
-    convertList (List xs) = mapM convert xs
-    convertList _         = Nothing
+    convertList :: Maybe Value -> Maybe [a]
+    convertList (Just (List xs)) = mapM (convert . Just) xs
+    convertList _                = Nothing
 
 instance Configured a => Configured [a] where
     convert = convertList

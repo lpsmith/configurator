@@ -20,18 +20,18 @@ import Data.Scientific ( Scientific,  coefficient, base10Exponent
                        , floatingOrInteger, toRealFloat, toBoundedInteger )
 
 instance Configured Value where
-    convert = Just
+    convert = id
 
 instance Configured Bool where
-    convert (Bool v) = Just v
-    convert _        = Nothing
+    convert (Just (Bool v)) = Just v
+    convert _               = Nothing
 
-convertNumberToBoundedInteger :: (Integral a, Bounded a) => Value -> Maybe a
-convertNumberToBoundedInteger (Number r) = toBoundedInteger r
+convertNumberToBoundedInteger :: (Integral a, Bounded a) => Maybe Value -> Maybe a
+convertNumberToBoundedInteger (Just (Number r)) = toBoundedInteger r
 convertNumberToBoundedInteger _ = Nothing
 
-convertNumberToInteger :: forall a. (Integral a) => Value -> Maybe a
-convertNumberToInteger (Number r)
+convertNumberToInteger :: forall a. (Integral a) => Maybe Value -> Maybe a
+convertNumberToInteger (Just (Number r))
     | Right n <- floatingOrInteger r :: Either Float a = Just n
 convertNumberToInteger _ = Nothing
 
@@ -68,12 +68,14 @@ instance Configured Word32 where
 instance Configured Word64 where
     convert = convertNumberToBoundedInteger
 
-convertNumberToRealFloat :: (RealFloat a) => Value -> Maybe a
-convertNumberToRealFloat (Number r) = Just $ toRealFloat r
-convertNumberToRealFloat _          = Nothing
+convertNumberToRealFloat :: (RealFloat a) => Maybe Value -> Maybe a
+convertNumberToRealFloat v =
+    case v of
+      (Just (Number r)) -> Just $ toRealFloat r
+      _                 -> Nothing
 
-convertNumberToFractional :: (Fractional a) => Value -> Maybe a
-convertNumberToFractional (Number r) = Just $ fromRational r'
+convertNumberToFractional :: (Fractional a) => Maybe Value -> Maybe a
+convertNumberToFractional (Just (Number r)) = Just $ fromRational r'
   where
     c  = coefficient    r
     e  = base10Exponent r
@@ -98,22 +100,22 @@ instance Integral a => Configured (Ratio a) where
     convert = convertNumberToFractional
 
 instance Configured Scientific where
-    convert (Number r) = Just r
-    convert _          = Nothing
+    convert (Just (Number r)) = Just r
+    convert _                 = Nothing
 
 instance RealFloat a => Configured (Complex a) where
-    convert (Number r) = Just (toRealFloat r :+ 0)
-    convert _          = Nothing
+    convert (Just (Number r)) = Just (toRealFloat r :+ 0)
+    convert _                 = Nothing
 
 instance HasResolution a => Configured (Fixed a) where
     convert = convertNumberToFractional
 
 instance Configured T.Text where
-    convert (String v) = Just v
-    convert _          = Nothing
+    convert (Just (String v)) = Just v
+    convert _                 = Nothing
 
 instance Configured Char where
-    convert (String txt) | T.length txt == 1 = Just $ T.head txt
+    convert (Just (String txt)) | T.length txt == 1 = Just $ T.head txt
     convert _ = Nothing
 
     convertList = fmap T.unpack . convert
@@ -128,15 +130,25 @@ instance Configured LB.ByteString where
     convert = fmap (LB.fromChunks . (:[])) . convert
 
 instance (Configured a, Configured b) => Configured (a,b) where
-    convert (List [a,b]) = (,) <$> convert a <*> convert b
-    convert _            = Nothing
+    convert (Just (List [a,b])) =
+        (,) <$> convert (Just a) <*> convert (Just b)
+    convert _ =
+        Nothing
 
 instance (Configured a, Configured b, Configured c) => Configured (a,b,c) where
-    convert (List [a,b,c]) = (,,) <$> convert a <*> convert b <*> convert c
-    convert _              = Nothing
+    convert (Just (List [a,b,c])) =
+        (,,) <$> convert (Just a) <*> convert (Just b) <*> convert (Just c)
+    convert _ =
+        Nothing
 
 instance (Configured a, Configured b, Configured c, Configured d)
     => Configured (a,b,c,d) where
-    convert (List [a,b,c,d]) = (,,,) <$> convert a <*> convert b <*> convert c
-                                     <*> convert d
-    convert _                = Nothing
+    convert (Just (List [a,b,c,d]))
+        = (,,,) <$> convert (Just a) <*> convert (Just b) <*> convert (Just c)
+                <*> convert (Just d)
+    convert _
+        = Nothing
+
+instance (Configured a) => Configured (Maybe a) where
+    convert Nothing  = Just Nothing
+    convert (Just v) = Just <$> convert (Just v)

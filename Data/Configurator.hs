@@ -220,7 +220,7 @@ getMeta paths = forM paths $ \path ->
 -- converted value, otherwise 'Nothing'.
 lookup :: Configured a => ConfigCache -> Name -> IO (Maybe a)
 lookup ConfigCache{..} name =
-    (join . fmap convert . CB.lookup name) <$> readIORef cfgMap
+    (convert . CB.lookup name) <$> readIORef cfgMap
 
 -- | Look up a name in the given 'ConfigCache'.  If a binding exists, and
 -- the value can be 'convert'ed to the desired type, return the

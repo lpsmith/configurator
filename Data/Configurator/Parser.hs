@@ -143,13 +143,18 @@ parseField :: forall m a. (ConfigParser m, Configured a, Typeable a)
 parseField name mdef mdefstr p =
     configParser_ $ \(CI.Config c) ->
         case CI.lookupWithName name c of
-          Nothing -> (mdef, DL.singleton (miss_err c))
+          Nothing -> 
+              case convert Nothing of
+                Nothing -> (mdef, DL.singleton (miss_err c))
+                Just v' -> if p v'
+                           then (Just v', mempty)
+                           else (mdef, DL.singleton (pred_err "FIXME" Nothing))
           Just (name', v) ->
-              case convert v of
+              case convert (Just v) of
                 Nothing -> (mdef, DL.singleton (conv_err name' v))
                 Just v' -> if p v'
                            then (Just v', mempty)
-                           else (mdef, DL.singleton (pred_err name' v))
+                           else (mdef, DL.singleton (pred_err name' (Just v)))
   where
      miss_err c
          = ConfigError {
@@ -170,7 +175,7 @@ parseField name mdef mdefstr p =
      pred_err name' v
          = ConfigError {
              configErrorKeys = [name'],
-             configErrorVal  = Just v,
+             configErrorVal  = v,
              configErrorType = typeOf (undefined :: a),
              configErrorDef  = mdefstr,
              configErrorWhy  = PredicateFailed
