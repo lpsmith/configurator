@@ -19,7 +19,7 @@ The application interface of `configurator` has numerous problems:
   * it makes it difficult to write an application that is relatively
     robust to misconfiguration errors
   * does not scale well to moderately complex configuration scenarios
-  * the configuration change notification is particularly difficult
+  * the configuration change notifications are particularly difficult
     to use beyond the most trivial of use cases.
 
 The aim of `configurator-ng` is to improve these issues,  with the
@@ -55,8 +55,8 @@ result into configuration parameters:
 This obtains a consistent\* snapshot of the configuration,  from which
 you can pull out multiple values.   But in addition to being
 less obvious and inconvenient,  the fact that the `HashMap` returned
-is not an abstract type makes it more difficult to modify the data
-representation.
+is not an abstract type makes means that changing the representation
+breaks client code that uses this approach.
 
 `configurator-ng` makes the latter mode of use much more convenient by
 introducing `ConfigParser`s,  a applicative/monadic high-level parsing
@@ -139,7 +139,7 @@ event processor doesn't know about in advance.  Since `configurator`
 is tied down to `HashMap`,  the data structure offers no support for
 efficiently discovering these names.  In order to fix this,
 `configurator-ng` moved to [`critbit`][critbit]. which allows us to
-efficently iterate over these keys (in alphabetical order).  So
+efficiently iterate over these keys (in alphabetical order).  So
 `configurator-ng` offers the following operator:
 
     subgroups :: ConfigParser m => Text -> m [Text]
@@ -160,7 +160,7 @@ event-sources {
     amazon-cloud {
         postgres { host = "cloudevents.mydomain.com" }
     }
-    chicago-call-center {
+    chicago-service-center {
         postgres { host = "pgevents.customerdomain.com" }
     }
     default {
@@ -241,7 +241,7 @@ these are paid on each `(key,value)` lookup.
 As a convenience for this sort of use case, the configuration file
 syntax has been extended to include datum comments,  not unlike those
 found in Scheme and Clojure.   For example,  one can disable
-`chicago-call-center` by including a `#;` token before the group name;
+`chicago-service-center` by including a `#;` token before the group name;
 the next binding must be syntactically correct,  but will be otherwise
 ignored by the low-level parser.
 
@@ -290,7 +290,8 @@ the possibility of changing.  If we design the `configurator-ng`
 interface carefully,  we can determine all the keys that a parser
 depends on.  We can then use this information to rerun only those
 parsers whose result might possibly change.  (Though,  `debounce` could
-still be useful,  as `ConfigParser`s aren't guaranteed to be 1-1.)
+still be useful,  as `ConfigParser`s aren't guaranteed to be 1-1
+functions.)
 
 However,  once we have dependency tracking that works,  there are
 further applications this could enable,  such as:
