@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE CPP, DeriveDataTypeable, DeriveFunctor #-}
 
 -- |
 -- Module:      Data.Configurator.Parser.Implementation
@@ -27,11 +27,13 @@ newtype ConfigParserM a
       deriving (Typeable, Functor)
 
 instance Applicative ConfigParserM where
-    pure  = return
+    pure a = ConfigParserM $ \_ -> (pure a, mempty)
     (<*>) = ap
 
 instance Monad ConfigParserM where
-    return a = ConfigParserM $ \_ -> (pure a, mempty)
+#if !(MIN_VERSION_base(4,8,0))
+    return = pure
+#endif
     m >>= k  = ConfigParserM $ \r ->
                    let (ma, w ) = unConfigParserM m r
                     in case ma of
