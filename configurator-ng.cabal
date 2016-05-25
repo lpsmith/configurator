@@ -52,6 +52,8 @@ library
     Data.Configurator
     Data.Configurator.Config
     Data.Configurator.Config.Internal
+    Data.Configurator.FromValue
+    Data.Configurator.FromValue.Internal
     Data.Configurator.Parser
     Data.Configurator.Parser.Internal
     Data.Configurator.Types
@@ -60,6 +62,7 @@ library
     Data.Configurator.Config.Implementation
     Data.Configurator.Instances
     Data.Configurator.Parser.Implementation
+    Data.Configurator.FromValue.Implementation
     Data.Configurator.Syntax
     Data.Configurator.Types.Internal
 
@@ -72,6 +75,7 @@ library
     directory,
     data-ordlist,
     hashable,
+    mtl,
     scientific,
     text >= 0.11.1.0,
     unix-compat,

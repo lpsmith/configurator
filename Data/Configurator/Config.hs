@@ -1,5 +1,5 @@
 -- |
--- Module:      Data.Configurator.Config.Internal
+-- Module:      Data.Configurator.Config
 -- Copyright:   (c) 2016 Leon P Smith
 -- License:     BSD3
 -- Maintainer:  Leon P Smith <leon@melding-monads.com>
