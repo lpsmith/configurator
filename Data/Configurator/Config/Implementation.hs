@@ -46,7 +46,14 @@ addPrefix pre key
     | otherwise  = T.concat [pre, ".", key]
 
 stripPrefix :: Name -> Name -> Maybe Name
-stripPrefix pre key = T.stripPrefix pre key >>= T.stripPrefix "."
+stripPrefix pre key =
+    if   T.null pre
+    then Just key
+    else case T.stripPrefix pre key of
+           Nothing -> Nothing
+           Just key' -> if   T.null key'
+                        then Just T.empty
+                        else T.stripPrefix "." key'
 
 foldPlan :: b -> (b -> b -> b) -> (Text -> a -> b) -> Text -> ConfigPlan a -> b
 foldPlan empty union lookup = loop
@@ -55,7 +62,7 @@ foldPlan empty union lookup = loop
     loop key  (Superconfig pre pl ) = case stripPrefix pre key of
                                         Nothing   -> empty
                                         Just key' -> loop key' pl
-    loop key  (Union       pl1 pl2) = loop key pl2 `union` loop key pl1
+    loop key  (Union       pl1 pl2) = loop key pl1 `union` loop key pl2
     loop key  (ConfigPlan  a      ) = lookup key a
     loop _key  Empty                = empty
 {-# INLINE foldPlan #-}
@@ -77,32 +84,30 @@ subassocs_ :: (Text -> a -> [(Text,b)])
            -> Text -> ConfigPlan a -> [(Text,b)]
 subassocs_ subassocs = loop
   where
-    stripPrefixes pre = mapMaybe $ \(k,v) ->
-                          case stripPrefix pre k of
-                            Nothing -> Nothing
-                            Just k' -> Just (k',v)
+    addPrefixes pre
+        | T.null pre = id
+        | otherwise  = map (\(k,v) -> (addPrefix pre k,v))
 
-    addPrefixes pre = map (\(k,v) -> (addPrefix pre k,v))
+    stripPrefixes pre
+        | T.null pre = id
+        | otherwise  = mapMaybe $ \(k,v) -> case stripPrefix pre k of
+                                              Nothing -> Nothing
+                                              Just k' -> Just (k',v)
 
     loop !_key Empty = []
     loop !key (Subconfig   pre pl) =
         stripPrefixes pre (loop (addPrefix pre key) pl)
     loop !key (Superconfig pre pl) =
-        case T.commonPrefixes pre key of
-          Nothing
-              | T.null pre -> loop key pl
-              | T.null key -> addPrefixes pre (loop key pl)
-              | otherwise  -> []
-          Just (prefix, pre', key')
-              | T.null key' -> addPrefixes pre    (loop T.empty pl)
-              | T.null pre' -> case T.stripPrefix "." key' of
-                                 Nothing -> []
-                                 Just key'' -> addPrefixes prefix (loop key'' pl)
-              | otherwise   -> []
+        if T.length key <= T.length pre
+        then case stripPrefix key pre of
+               Nothing    -> []
+               Just _pre' -> addPrefixes pre (loop T.empty pl)
+        else case stripPrefix pre key of
+               Nothing    -> []
+               Just key'  -> addPrefixes pre (loop key' pl)
     loop !key (Union pl1 pl2) =
-        OL.unionBy (compare `on` fst) (loop key pl2) (loop key pl1)
+        OL.unionBy (compare `on` fst) (loop key pl1) (loop key pl2)
     loop !key (ConfigPlan map) = subassocs key map
-
 
 submap :: Text -> CritBit Text a -> CritBit Text a
 submap key map
@@ -132,36 +137,29 @@ nullSubmap key map =
 subgroups :: Text -> ConfigMap a -> [Text]
 subgroups = loop
   where
-    stripPrefixes pre = mapMaybe (stripPrefix pre)
-    addPrefixes   pre = map (addPrefix pre)
+    stripPrefixes pre
+        | T.null pre = id
+        | otherwise  = mapMaybe (stripPrefix pre)
+
+    addPrefixes pre
+        | T.null pre = id
+        | otherwise  = map (addPrefix pre)
 
     loop !_key Empty = []
     loop !key (Subconfig   pre pl) =
         stripPrefixes pre (loop (addPrefix pre key) pl)
     loop !key (Superconfig pre pl) =
-        case T.commonPrefixes pre key of
-          Nothing
-              | T.null pre -> loop key pl
-              | T.null key ->
-                  if null pl
-                  then []
-                  else [T.takeWhile ('.' /=) pre]
-              | otherwise  -> []
-          Just (prefix, pre', key')
-              | T.null key' ->
-                  if T.null pre'
-                  then addPrefixes pre (loop key' pl)
-                  else if T.head pre' /= '.' || null pl
-                       then []
-                       else [addPrefix prefix
-                                       (T.takeWhile ('.' /=) (T.tail pre'))]
-              | T.null pre' ->
-                  case T.stripPrefix "." key' of
-                    Nothing -> []
-                    Just key'' -> addPrefixes prefix (loop key'' pl)
-              | otherwise   -> []
+        if T.length pre <= T.length key
+        then case stripPrefix pre key of
+               Nothing    -> []
+               Just key'  -> addPrefixes pre (loop key' pl)
+        else case stripPrefix key pre of
+               Nothing    -> []
+               Just pre'  -> if null pl
+                             then []
+                             else [addPrefix key (T.takeWhile ('.' /=) pre')]
     loop !key (Union  pl1 pl2) =
-        OL.unionBy compare (loop key pl2) (loop key pl1)
+        OL.unionBy compare (loop key pl1) (loop key pl2)
     loop !key (ConfigPlan map) = subgroupsMap key map
 
 subgroupsMap :: Text -> CritBit Text a -> [Text]
@@ -177,17 +175,13 @@ subgroupsMap pre_ map = loop (CB.lookupGT pre map)
                        in if T.null sfxz
                           then loop (CB.lookupGT key map)
                           else let key' = pre <> sfxa
-                                in key' : loop (CB.lookupGE (key' <> "/") map)
-
+                                in key' : loop (CB.lookupGT (key' <> "/") map)
 
 union :: ConfigMap a -> ConfigMap a -> ConfigMap a
 union x y
     | null x    = y
     | null y    = x
     | otherwise = Union x y
-
-commonPrefixes :: Text -> Text -> (Text, Text, Text)
-commonPrefixes a b = maybe (T.empty, a, b) id (T.commonPrefixes a b)
 
 subconfig :: Text -> ConfigMap a -> ConfigMap a
 subconfig = \k c -> if T.null k then c else loop k c
@@ -197,21 +191,15 @@ subconfig = \k c -> if T.null k then c else loop k c
           Empty -> Empty
           Union a b -> union (loop k a) (loop k b)
           Superconfig kk cc ->
-            if T.null kk
-            then loop k cc
-            else case commonPrefixes k kk of
-                   (_common, k', kk') ->
-                       if T.null k'
-                       then if T.null kk'
-                            then cc
-                            else case T.stripPrefix "." kk' of
-                                   Nothing   -> Empty
-                                   Just kk'' -> Superconfig kk'' cc
-                       else if T.null kk'
-                            then case T.stripPrefix "." k' of
-                                   Nothing   -> Empty
-                                   Just k''  -> loop k'' cc
-                            else Empty
+            if T.length k <= T.length kk
+            then case stripPrefix k kk of
+                   Nothing  -> Empty
+                   Just kk' -> if T.null kk'
+                               then cc
+                               else Superconfig kk' cc
+            else case stripPrefix kk k of
+                   Nothing  -> Empty
+                   Just k'  -> loop k' cc
           ConfigPlan map ->
             let map' = submap k map
              in if CB.null map'
