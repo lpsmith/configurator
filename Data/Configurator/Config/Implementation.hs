@@ -204,7 +204,7 @@ subconfig = \k c -> if T.null k then c else loop k c
             let map' = submap k map
              in if CB.null map'
                 then Empty
-                else ConfigPlan map'
+                else Subconfig k (ConfigPlan map')
           (Subconfig _ _) ->
             let c' = Subconfig k c
              in if null c'
