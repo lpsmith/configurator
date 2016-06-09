@@ -58,6 +58,7 @@ import           Data.Configurator.Config
                    )
 import qualified Data.Configurator.Config as C
 import qualified Data.Configurator.Config.Internal as CI
+import           Data.Configurator.Instances ()
 import           Data.Configurator.Parser.Implementation
 
 #if __GLASGOW_HASKELL__ >= 800
