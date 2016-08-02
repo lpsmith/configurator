@@ -1,3 +1,5 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+
 -- |
 -- Module:      Data.Configurator.FromValue
 -- Copyright:   (c) 2016 Leon P Smith
@@ -5,25 +7,31 @@
 -- Maintainer:  Leon P Smith <leon@melding-monads.com>
 
 module Data.Configurator.FromValue
-     ( FromValue
+     ( ConversionError(..)
+     , ConversionErrorWhy(..)
+     , defaultConversionError
      , ValueParser
+     , runValueParser
+     , MaybeParser
+     , runMaybeParser
+     , ListParser
      , optionalValue
-     , Control.Monad.Reader.ask
+     , requiredValue
+     , listValue
+     , listValue'
+     , listElem
+     , boundedIntegerValue
+     , integralValue
+     , fractionalValue
+     , realFloatValue
+     , fixedValue
+     , scientificValue
+     , textValue
+     , charValue
+     , typeError
+     , valueError
+     , extraValuesError
+     , missingValueError
      ) where
 
-import Control.Monad.Reader
 import Data.Configurator.FromValue.Implementation
-
-class FromValue a where
-    fromValue :: ValueParser a
-
-instance FromValue a => FromValue (Maybe a) where
-    fromValue = optionalValue fromValue
-
-optionalValue :: ValueParser a -> ValueParser (Maybe a)
-optionalValue m =
-    ValueParser $ \mv -> case mv of
-        Nothing -> (Just Nothing, mempty)
-        _       -> case unValueParser m mv of
-                     (Just res, w) -> (Just (Just res), w)
-                     (Nothing,  w) -> (Nothing, w)

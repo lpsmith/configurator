@@ -5,9 +5,11 @@
 -- Maintainer:  Leon P Smith <leon@melding-monads.com>
 
 module Data.Configurator.FromValue.Internal
-     ( RMW
+     ( ConversionErrors
      , ValueParser(..)
-     , runValueParser
+     , MaybeParser(..)
+     , ListParserResult(..)
+     , ListParser(..)
      ) where
 
 import Data.Configurator.FromValue.Implementation
