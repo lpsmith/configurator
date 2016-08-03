@@ -16,7 +16,6 @@ import           Control.Arrow (first, second)
 import           Control.Exception (Exception)
 import           Control.Monad (ap)
 import qualified Control.Monad.Fail as Fail
-import           Data.ByteString(ByteString)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as LB
 import           Data.Complex (Complex((:+)))
@@ -45,7 +44,6 @@ data ConversionError = ConversionError {
       conversionErrorWhy  :: ConversionErrorWhy,
       conversionErrorVal  :: !(Maybe Value),
       conversionErrorType :: !(Maybe TypeRep),
-      conversionErrorSub  :: ![ConversionError],
       conversionErrorMsg  :: !(Maybe Text)
     } deriving (Show, Typeable)
 
@@ -63,7 +61,7 @@ data ConversionErrorWhy =
 
 defaultConversionError :: ConversionError
 defaultConversionError =
-    ConversionError "" OtherError Nothing Nothing [] Nothing
+    ConversionError "" OtherError Nothing Nothing Nothing
 
 singleError :: ConversionError -> ConversionErrors
 singleError = Just . DList.singleton
@@ -230,7 +228,7 @@ optionalValue p =
        case mv of
          Nothing -> (Just Nothing, mempty)
          Just v  -> first (Just <$>) (unValueParser p v)
-                      
+
 
 requiredValue :: forall a. Typeable a => ValueParser a -> MaybeParser a
 requiredValue p =
@@ -283,14 +281,20 @@ listValue' p =
     extraErr vs = singleError $ extraValuesError fn vs (typeOf (undefined :: a))
     typeErr  v  = singleError $ typeError        fn v  (typeOf (undefined :: a))
 
-listElem :: ValueParser a -> ListParser a
+listElem :: forall a. (Typeable a) => ValueParser a -> ListParser a
 listElem p =
     ListParser $ \vs ->
         case vs of
-          [] -> (ListError, mempty)
+          [] -> (ListError, exhaustedError)
           (v:vs') -> case unValueParser p v of
                        (Nothing, errs) -> (NonListError, errs)
                        (Just a,  errs) -> (ListOk a vs', errs)
+  where
+    exhaustedError = singleError defaultConversionError {
+                       conversionErrorLoc  = "listElem",
+                       conversionErrorWhy  = ExhaustedValues,
+                       conversionErrorType = Just (typeOf (undefined :: a))
+                     }
 
 extraValuesError :: Text -> [Value] -> TypeRep -> ConversionError
 extraValuesError funcName vals typ
@@ -344,10 +348,10 @@ integralValue =
         case v of
           Number r ->
               if base10Exponent r >= 0
-              then toIntegral v r
+              then toIntegral r
               else let r' = normalize r
                    in if base10Exponent r' >= 0
-                      then toIntegral v r'
+                      then toIntegral r'
                       else (Nothing, intErr r)
           _  -> (Nothing, typeErr v)
   where
@@ -355,7 +359,7 @@ integralValue =
     intErr  r = singleError (notAnIntegerError fn r (typeOf (undefined :: a)))
     typeErr v = singleError (typeError         fn v (typeOf (undefined :: a)))
 
-    toIntegral v r =
+    toIntegral r =
         case floatingOrInteger r of
           Right a -> (Just a, mempty)
           -- This case should be impossible:
