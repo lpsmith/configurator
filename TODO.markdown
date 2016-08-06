@@ -1,9 +1,3 @@
- * Modify the `Configured` class interface to enable the reporting of error
-   messages.  (And warning messages?  Multiple error messages/warnings?)
-
- * Rename `Parser.optional` (and `Config.empty`?) to not conflict with
-   `Control.Applicative`.
-
  * Strongly consider removing `askConfig`,  and possibly reforming
    `localConfig`.  (I want to judiciously restrict the interface
    in order to enable more implementation strategies in the future.
@@ -11,8 +5,6 @@
 
  * Implement `Alternative` instances for `ConfigParser`,  as well as
    the `fail` method.
-
- * Rethink the primitive `ConfigParser` actions a bit.
 
  * Strongly consider renaming the modules,  as to not conflict with
    `configurator`.
