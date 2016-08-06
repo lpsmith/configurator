@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP, DeriveDataTypeable, DeriveFunctor #-}
 {-# LANGUAGE FlexibleInstances, DefaultSignatures #-}
 {-# LANGUAGE ScopedTypeVariables, BangPatterns, ViewPatterns #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, OverlappingInstances #-}
 
 -- |
 -- Module:      Data.Configurator.FromValue.Implementation
@@ -395,6 +395,25 @@ class FromListValue a where
 instance FromValue a => FromMaybeValue (Maybe a) where
     fromMaybeValue = optionalValue fromValue
 
+instance FromMaybeValue Bool
+instance FromValue Bool where
+   fromValue = boolValue
+
+boolValue :: ValueParser Bool
+boolValue =
+    ValueParser $ \v ->
+        case v of
+          Bool b -> (Just b, mempty)
+          _ -> (Nothing, typeErr v (typeOf True))
+  where
+    fn = "boolValue"
+    typeErr v t = singleError (typeError fn v t)
+
+instance FromMaybeValue Value where
+    fromMaybeValue = MaybeParser $ \mv -> (mv, mempty)
+instance FromValue Value where
+    fromValue = ValueParser $ \v -> (Just v, mempty)
+
 instance FromMaybeValue Int
 instance FromValue Int where
     fromValue = boundedIntegerValue
@@ -533,6 +552,10 @@ instance FromValue LB.ByteString where
     fromValue = convert <$> textValue_ (typeOf (undefined :: LB.ByteString))
       where convert = LB.fromStrict . encodeUtf8
 
+instance FromMaybeValue String
+instance FromValue String where
+    fromValue = T.unpack <$> textValue_ (typeOf (undefined :: String))
+
 instance ( Typeable a, FromValue a
          , Typeable b, FromValue b ) => FromMaybeValue (a,b)
 instance ( Typeable a, FromValue a
@@ -554,6 +577,10 @@ instance ( Typeable a, FromValue a
          , Typeable c, FromValue c ) => FromListValue (a,b,c) where
     fromListValue = (,,) <$> listElem fromValue <*> listElem fromValue
                          <*> listElem fromValue
+
+instance (Typeable a, FromValue a) => FromMaybeValue [a]
+instance (Typeable a, FromValue a) => FromValue [a] where
+    fromValue = listValue (many (listElem fromValue))
 
 instance ( Typeable a, FromValue a
          , Typeable b, FromValue b
