@@ -1,6 +1,5 @@
 {-# LANGUAGE CPP, OverloadedStrings, ScopedTypeVariables #-}
 {-# LANGUAGE BangPatterns, ViewPatterns, TupleSections   #-}
-{-# LANGUAGE DeriveFunctor, DeriveDataTypeable           #-}
 
 -- |
 -- Module:      Data.Configurator.Parser
@@ -17,7 +16,9 @@ module Data.Configurator.Parser
     , ConfigParserA
     , ConfigParserM
     , ConfigError (..)
-    , ConfigErrorWhy (..)
+    , ConfigErrorLocation (..)
+    , ConversionError (..)
+    , ConversionErrorWhy (..)
     , Config
     , unsafeBind
     , runParser
@@ -34,21 +35,16 @@ module Data.Configurator.Parser
     , superconfig
     , empty
     , recover
-    , required
-    , requiredPred
-    , optional
-    , optionalPred
-    , parseField
+    , key
+    , keyWith
     ) where
 
 import           Prelude hiding (null)
 
 import           Control.Applicative hiding (optional, empty)
-import           Data.Configurator.Types.Internal hiding (Group)
 import           Data.DList (DList)
 import qualified Data.DList as DL
 import           Data.Monoid(Monoid(..),(<>))
-import           Data.Typeable
 import           Data.Configurator.Config
                    ( Config
                    , union
@@ -56,9 +52,14 @@ import           Data.Configurator.Config
                    , superconfig
                    , empty
                    )
+import           Data.Configurator.Types.Internal hiding (Group)
+import           Data.Configurator.FromValue
+                  ( FromMaybeValue(fromMaybeValue)
+                  , MaybeParser
+                  , runMaybeParser
+                  )
 import qualified Data.Configurator.Config as C
 import qualified Data.Configurator.Config.Internal as CI
-import           Data.Configurator.Instances ()
 import           Data.Configurator.Parser.Implementation
 
 #if __GLASGOW_HASKELL__ >= 800
@@ -84,7 +85,7 @@ unsafeBind m k = ConfigParserA $ \r ->
 
 runParser :: ConfigParser m => m a -> Config -> (Maybe a, [ConfigError])
 runParser m conf = let (ma, errs) = unConfigParser_ m conf
-                    in (ma, DL.toList errs)
+                    in (ma, toErrors errs)
 
 subassocs :: ConfigParser m => Name -> m [(Name, Value)]
 subassocs t = configParser_ (\c -> (Just (C.subassocs t c), mempty))
@@ -124,63 +125,26 @@ recover :: ConfigParser m => m a -> m (Maybe a)
 recover m = configParser_ $ \r -> let (ma, errs) = unConfigParser_ m r
                                    in (Just ma, errs)
 
-required :: (ConfigParser m, Configured a, Typeable a) => Name -> m a
-required name = requiredPred name (const True)
+key :: (ConfigParser m, FromMaybeValue a) => Name -> m a
+key name = keyWith name fromMaybeValue
 
-requiredPred :: (ConfigParser m, Configured a, Typeable a)
-             => Name -> (a -> Bool) -> m a
-requiredPred name p = parseField name Nothing Nothing p
-
-optional :: (ConfigParser m, Configured a, Typeable a, Show a)
-         => Name -> a -> m a
-optional name def = optionalPred name def (const True)
-
-optionalPred :: (ConfigParser m, Configured a, Typeable a, Show a)
-             => Name -> a -> (a -> Bool) -> m a
-optionalPred name def p = parseField name (Just def) (Just (show def)) p
-
-parseField :: forall m a. (ConfigParser m, Configured a, Typeable a)
-           => Name -> Maybe a -> Maybe String -> (a -> Bool) -> m a
-parseField name mdef mdefstr p =
+keyWith :: (ConfigParser m) => Name -> MaybeParser a -> m a
+keyWith name parser =
     configParser_ $ \(CI.Config c) ->
         case CI.lookupWithName name c of
-          Nothing -> 
-              case convert Nothing of
-                Nothing -> (mdef, DL.singleton (miss_err c))
-                Just v' -> if p v'
-                           then (Just v', mempty)
-                           else (mdef, DL.singleton (pred_err "FIXME" Nothing))
+          Nothing ->
+              convert (KeyMissing (DL.toList (getLookupPlan name c))) Nothing
           Just (name', v) ->
-              case convert (Just v) of
-                Nothing -> (mdef, DL.singleton (conv_err name' v))
-                Just v' -> if p v'
-                           then (Just v', mempty)
-                           else (mdef, DL.singleton (pred_err name' (Just v)))
+              convert (Key "" name') (Just v)
   where
-     miss_err c
-         = ConfigError {
-             configErrorKeys = DL.toList (getLookupPlan name c),
-             configErrorVal  = Nothing,
-             configErrorType = typeOf (undefined :: a),
-             configErrorDef  = mdefstr,
-             configErrorWhy  = Missing
-           }
-     conv_err name' v
-         = ConfigError {
-             configErrorKeys = [name'],
-             configErrorVal  = Just v,
-             configErrorType = typeOf (undefined :: a),
-             configErrorDef  = mdefstr,
-             configErrorWhy  = ConversionError
-           }
-     pred_err name' v
-         = ConfigError {
-             configErrorKeys = [name'],
-             configErrorVal  = v,
-             configErrorType = typeOf (undefined :: a),
-             configErrorDef  = mdefstr,
-             configErrorWhy  = PredicateFailed
-           }
+    convert loc mv =
+        case runMaybeParser parser mv of
+          (Nothing, errs) ->
+              (Nothing, singleError (ConfigError loc (Just errs)))
+          (Just a, []) ->
+              (Just a, mempty)
+          (Just a, errs@(_:_)) ->
+              (Just a,  singleError (ConfigError loc (Just errs)))
 
 getLookupPlan :: Name -> CI.ConfigPlan a -> DList Name
 getLookupPlan = CI.foldPlan DL.empty (<>) (\k _ -> DL.singleton k)

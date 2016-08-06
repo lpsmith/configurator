@@ -19,7 +19,17 @@ import qualified Control.Monad.Fail as Fail
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as LB
 import           Data.Complex (Complex((:+)))
-import           Data.Configurator.Types(Value(..))
+import           Data.Configurator.Types
+                   ( Value(..)
+                   , ConversionError(..)
+                   , ConversionErrorWhy(..)
+                   , defaultConversionError
+                   )
+import           Data.Configurator.Types.Internal
+                   ( MultiErrors
+                   , singleError
+                   , toErrors
+                   )
 import           Data.DList (DList)
 import qualified Data.DList as DList
 import           Data.Fixed (Fixed, HasResolution)
@@ -37,37 +47,7 @@ import           Data.Typeable(Typeable, TypeRep, typeOf)
 import           Data.Word(Word8, Word16, Word32, Word64)
 import           Foreign.C.Types(CFloat, CDouble)
 
-type ConversionErrors = Maybe (DList ConversionError)
-
-data ConversionError = ConversionError {
-      conversionErrorLoc  :: Text,
-      conversionErrorWhy  :: ConversionErrorWhy,
-      conversionErrorVal  :: !(Maybe Value),
-      conversionErrorType :: !(Maybe TypeRep),
-      conversionErrorMsg  :: !(Maybe Text)
-    } deriving (Show, Typeable)
-
-instance Exception ConversionError
-
-data ConversionErrorWhy =
-    MissingValue
-  | ExtraValues
-  | ExhaustedValues
-  | TypeError
-  | ValueError
-  | MonadFail
-  | OtherError
-    deriving (Eq, Typeable, Show)
-
-defaultConversionError :: ConversionError
-defaultConversionError =
-    ConversionError "" OtherError Nothing Nothing Nothing
-
-singleError :: ConversionError -> ConversionErrors
-singleError = Just . DList.singleton
-
-toErrors :: ConversionErrors -> [ConversionError]
-toErrors = maybe [] DList.toList
+type ConversionErrors = MultiErrors ConversionError
 
 newtype MaybeParser a = MaybeParser {
       unMaybeParser :: Maybe Value -> (Maybe a, ConversionErrors)

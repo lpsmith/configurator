@@ -15,6 +15,9 @@ module Data.Configurator.FromValue
      , MaybeParser
      , runMaybeParser
      , ListParser
+     , FromMaybeValue(..)
+     , FromValue(..)
+     , FromListValue(..)
      , optionalValue
      , requiredValue
      , listValue
@@ -35,3 +38,4 @@ module Data.Configurator.FromValue
      ) where
 
 import Data.Configurator.FromValue.Implementation
+import Data.Configurator.Types

@@ -17,13 +17,15 @@ import Data.Typeable (Typeable)
 
 type RMW r w a = r -> (Maybe a, w)
 
+type ConfigErrors = Maybe (DList ConfigError)
+
 -- | A @'ConfigParserM' a@ computation produces a value of type @'Maybe' a@
 --   from a given 'Config',  in addition to a list of diagnostic messages
 --   which may be interpreted as warnings or errors as deemed appropriate.
 --   Errors are cre
 
 newtype ConfigParserM a
-    = ConfigParserM { unConfigParserM :: RMW Config (DList ConfigError) a }
+    = ConfigParserM { unConfigParserM :: RMW Config ConfigErrors a }
       deriving (Typeable, Functor)
 
 instance Applicative ConfigParserM where
@@ -45,7 +47,7 @@ instance Monad ConfigParserM where
 --   run in order to produce more error messages.
 
 newtype ConfigParserA a
-    = ConfigParserA { unConfigParserA :: RMW Config (DList ConfigError) a }
+    = ConfigParserA { unConfigParserA :: RMW Config ConfigErrors a }
       deriving (Typeable, Functor)
 
 instance Applicative ConfigParserA where
@@ -88,8 +90,8 @@ instance Alternative ConfigParserA where
 --    any additional instances.
 
 class Applicative m => ConfigParser m where
-    configParser_   :: RMW Config (DList ConfigError) a -> m a
-    unConfigParser_ :: m a -> RMW Config (DList ConfigError) a
+    configParser_   :: RMW Config ConfigErrors a -> m a
+    unConfigParser_ :: m a -> RMW Config ConfigErrors a
 
 {--
 --- Unfortunately,  this doesn't work (yet?) because of MonadReader's

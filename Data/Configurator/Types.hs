@@ -15,12 +15,14 @@ module Data.Configurator.Types
     , ConfigCache
     , Name
     , Value(..)
-    , Configured, convert
     , Worth(..)
-    , ConfigErrorWhy(..)
     -- * Exceptions
     , ParseError(..)
     , ConfigError(..)
+    , ConfigErrorLocation(..)
+    , ConversionError(..)
+    , ConversionErrorWhy(..)
+    , defaultConversionError
     , KeyError(..)
     -- * Notification of configuration changes
     , Pattern

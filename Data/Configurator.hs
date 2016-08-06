@@ -38,10 +38,13 @@ module Data.Configurator
     , autoReload
     , autoReloadGroups
     , autoConfig
+{--
     -- * Lookup functions
+
     , lookup
     , lookupDefault
     , require
+--}
     -- * Notification of configuration changes
     -- $notify
     , prefix
@@ -62,7 +65,6 @@ import Control.Applicative ((<$>))
 import Control.Concurrent (ThreadId, forkIO, threadDelay)
 import Control.Exception (SomeException, evaluate, handle, throwIO, try)
 import Control.Monad (foldM, forM, forM_, join, when, msum)
-import Data.Configurator.Instances ()
 import Data.Configurator.Syntax (interp, topLevel)
 import Data.Configurator.Types.Internal
 import Data.Configurator.Config.Internal(ConfigPlan(ConfigPlan), Config(Config))
@@ -215,13 +217,16 @@ getMeta paths = forM paths $ \path ->
      st <- getFileStatus (worth path)
      return (fileSize st, modificationTime st)
 
+{--
 -- | Look up a name in the given 'ConfigCache'.  If a binding exists, and
 -- the value can be 'convert'ed to the desired type, return the
 -- converted value, otherwise 'Nothing'.
 lookup :: Configured a => ConfigCache -> Name -> IO (Maybe a)
 lookup ConfigCache{..} name =
     (convert . CB.lookup name) <$> readIORef cfgMap
+--}
 
+{--
 -- | Look up a name in the given 'ConfigCache'.  If a binding exists, and
 -- the value can be 'convert'ed to the desired type, return the
 -- converted value, otherwise throw a 'KeyError'.
@@ -231,7 +236,9 @@ require cfg name = do
   case val of
     Just v -> return v
     _      -> throwIO . KeyError $ name
+--}
 
+{--
 -- | Look up a name in the given 'ConfigCache'.  If a binding exists, and
 -- the value can be converted to the desired type, return it,
 -- otherwise return the default value.
@@ -241,6 +248,7 @@ lookupDefault :: Configured a =>
               -- fails.
               -> ConfigCache -> Name -> IO a
 lookupDefault def cfg name = fromMaybe def <$> lookup cfg name
+--}
 
 -- | Perform a simple dump of a 'ConfigCache' to @stdout@.
 display :: ConfigCache -> IO ()

@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable, FlexibleInstances #-}
+{-# LANGUAGE DeriveDataTypeable, FlexibleInstances, OverloadedStrings #-}
 
 -- |
 -- Module:      Data.Configurator.Types.Internal
@@ -13,7 +13,6 @@
 module Data.Configurator.Types.Internal
     (
       ConfigCache(..)
-    , Configured(..)
     , AutoConfig(..)
     , Worth(..)
     , Name
@@ -23,7 +22,13 @@ module Data.Configurator.Types.Internal
     , Directive(..)
     , ParseError(..)
     , ConfigError(..)
-    , ConfigErrorWhy(..)
+    , ConfigErrorLocation(..)
+    , ConversionError(..)
+    , ConversionErrorWhy(..)
+    , defaultConversionError
+    , MultiErrors
+    , singleError
+    , toErrors
     , KeyError(..)
     , Interpolate(..)
     , Pattern(..)
@@ -34,6 +39,8 @@ module Data.Configurator.Types.Internal
 
 import Control.Exception
 import Data.Data (Data)
+import Data.DList (DList)
+import qualified Data.DList as DList
 import Data.Hashable (Hashable(..))
 import Data.IORef (IORef)
 import Data.List (isSuffixOf)
@@ -122,22 +129,6 @@ instance Hashable Pattern where
     hashWithSalt salt (Exact n)  = hashWithSalt salt n
     hashWithSalt salt (Prefix n) = hashWithSalt salt n
 
--- | This class represents types that can be automatically and safely
--- converted /from/ a 'Value' /to/ a destination type.  If conversion
--- fails because the types are not compatible, 'Nothing' is returned.
---
--- For an example of compatibility, a 'Value' of 'Bool' 'True' cannot
--- be 'convert'ed to an 'Int'.
-class Configured a where
-    convert :: Maybe Value -> Maybe a
-
-    convertList :: Maybe Value -> Maybe [a]
-    convertList (Just (List xs)) = mapM (convert . Just) xs
-    convertList _                = Nothing
-
-instance Configured a => Configured [a] where
-    convert = convertList
-
 -- | An error occurred during the low-level parsing of a configuration file.
 data ParseError  = ParseError FilePath String
                      deriving (Show, Typeable)
@@ -146,20 +137,48 @@ instance Exception ParseError
 
 -- | An error (or warning) from a higher-level parser of a configuration file.
 data ConfigError = ConfigError {
-      configErrorKeys :: ![Name]
-    , configErrorVal  :: !(Maybe Value)
-    , configErrorType :: !TypeRep
-    , configErrorDef  :: !(Maybe String)
-    , configErrorWhy  :: !ConfigErrorWhy
+      configErrorLocation   :: ConfigErrorLocation
+    , configConversionError :: Maybe [ConversionError]
     } deriving (Eq, Show, Typeable)
 
 instance Exception ConfigError
 
-data ConfigErrorWhy
-    = Missing
-    | ConversionError
-    | PredicateFailed
-      deriving (Eq, Ord, Show, Enum, Bounded, Typeable)
+data ConfigErrorLocation
+    = KeyMissing [Name]
+    | Key FilePath Name
+      deriving (Eq, Show, Typeable)
+
+data ConversionError = ConversionError {
+      conversionErrorLoc  :: Text,
+      conversionErrorWhy  :: ConversionErrorWhy,
+      conversionErrorVal  :: !(Maybe Value),
+      conversionErrorType :: !(Maybe TypeRep),
+      conversionErrorMsg  :: !(Maybe Text)
+    } deriving (Eq, Show, Typeable)
+
+instance Exception ConversionError
+
+data ConversionErrorWhy =
+    MissingValue
+  | ExtraValues
+  | ExhaustedValues
+  | TypeError
+  | ValueError
+  | MonadFail
+  | OtherError
+    deriving (Eq, Typeable, Show)
+
+defaultConversionError :: ConversionError
+defaultConversionError =
+    ConversionError "" OtherError Nothing Nothing Nothing
+
+type MultiErrors a = Maybe (DList a)
+
+singleError :: a -> MultiErrors a
+singleError = Just . DList.singleton
+
+toErrors :: MultiErrors a -> [a]
+toErrors = maybe [] DList.toList
 
 -- | An error occurred while lookup up the given 'Name'.
 data KeyError = KeyError Name

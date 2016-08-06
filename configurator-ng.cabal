@@ -60,7 +60,6 @@ library
 
   other-modules:
     Data.Configurator.Config.Implementation
-    Data.Configurator.Instances
     Data.Configurator.Parser.Implementation
     Data.Configurator.FromValue.Implementation
     Data.Configurator.Syntax
