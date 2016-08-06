@@ -78,7 +78,7 @@ Finally,  we could define a `ConfigParser` to read from key1 and key2
 by writing:
 
     getKeys :: ConfigParser m => m (Text, Int)
-    getKeys = (,) <$> require "key0" <*> require "key1"
+    getKeys = (,) <$> key "key0" <*> key "key1"
 
 (\*It's important to point out that `getMap` only avoids introducing
 additional race conditions;  commonly used filesystems are racey
@@ -209,8 +209,8 @@ eventSource name = do
     localConfig (\c -> union (subconfig name      c)
                              (subconfig "default" c)) $ do
         libpqConnParams   <- localConfig (subconfig "postgres") (subassocs "")
-        heartbeatInterval <- require "heartbeat-interval"
-        heartbeatTimeout  <- require "heartbeat-timeout"
+        heartbeatInterval <- key "heartbeat-interval"
+        heartbeatTimeout  <- key "heartbeat-timeout"
         pure $! EventSource{..}
 ~~~
 
