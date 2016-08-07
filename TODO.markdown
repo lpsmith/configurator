@@ -1,8 +1,3 @@
- * Strongly consider removing `askConfig`,  and possibly reforming
-   `localConfig`.  (I want to judiciously restrict the interface
-   in order to enable more implementation strategies in the future.
-   Of course,  I need to ensure that important use cases are covered.)
-
  * Implement `Alternative` instances for `ConfigParser`,  as well as
    the `fail` method.
 

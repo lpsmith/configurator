@@ -10,9 +10,12 @@ module Data.Configurator.Parser.Implementation where
 
 import Control.Monad (ap)
 import Data.Configurator.Config (Config)
+import qualified Data.Configurator.Config as C
+import Data.Configurator.Config.Implementation (ConfigPlan(..))
 import Data.Configurator.Types (ConfigError)
 import Data.DList (DList)
 import Data.Monoid
+import Data.Text (Text)
 import Data.Typeable (Typeable)
 
 type RMW r w a = r -> (Maybe a, w)
@@ -112,3 +115,33 @@ instance ConfigParser ConfigParserM where
 instance ConfigParser ConfigParserA where
     configParser_   = ConfigParserA
     unConfigParser_ = unConfigParserA
+
+newtype ConfigTransform = ConfigTransform (ConfigPlan ())
+
+instance Monoid ConfigTransform where
+   mempty = ConfigTransform (ConfigPlan ())
+   (ConfigTransform x) `mappend` (ConfigTransform y) = (ConfigTransform (go x))
+     where
+       go (ConfigPlan _)      = y
+       go (Union a b)         = Union (go a) (go b)
+       go (Superconfig pre a) = Superconfig pre (go a)
+       go (Subconfig pre a)   = Subconfig pre (go a)
+       go Empty               = Empty
+
+union :: ConfigTransform -> ConfigTransform -> ConfigTransform
+union (ConfigTransform x) (ConfigTransform y) = ConfigTransform (Union x y)
+
+subconfig :: Text -> ConfigTransform -> ConfigTransform
+subconfig k (ConfigTransform x) = ConfigTransform (Subconfig k x)
+
+superconfig :: Text -> ConfigTransform -> ConfigTransform
+superconfig k (ConfigTransform x) = ConfigTransform (Superconfig k x)
+
+interpConfigTransform :: ConfigTransform -> Config -> Config
+interpConfigTransform (ConfigTransform x) config = go x
+  where
+    go Empty             = C.empty
+    go (ConfigPlan _)    = config
+    go (Superconfig k x) = C.superconfig k (go x)
+    go (Subconfig   k x) = C.subconfig k (go x)
+    go (Union       x y) = C.union (go x) (go y)

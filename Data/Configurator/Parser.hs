@@ -20,6 +20,7 @@ module Data.Configurator.Parser
     , ConversionError (..)
     , ConversionErrorWhy (..)
     , Config
+    , ConfigTransform
     , unsafeBind
     , runParser
     , runParserA
@@ -28,12 +29,10 @@ module Data.Configurator.Parser
     , parserM
     , subassocs
     , subgroups
-    , askConfig
     , localConfig
     , union
     , subconfig
     , superconfig
-    , empty
     , recover
     , key
     , keyWith
@@ -46,18 +45,13 @@ import           Data.DList (DList)
 import qualified Data.DList as DL
 import           Data.Monoid(Monoid(..),(<>))
 import           Data.Configurator.Config
-                   ( Config
-                   , union
-                   , subconfig
-                   , superconfig
-                   , empty
-                   )
+                   ( Config )
 import           Data.Configurator.Types.Internal hiding (Group)
 import           Data.Configurator.FromValue
-                  ( FromMaybeValue(fromMaybeValue)
-                  , MaybeParser
-                  , runMaybeParser
-                  )
+                   ( FromMaybeValue(fromMaybeValue)
+                   , MaybeParser
+                   , runMaybeParser
+                   )
 import qualified Data.Configurator.Config as C
 import qualified Data.Configurator.Config.Internal as CI
 import           Data.Configurator.Parser.Implementation
@@ -93,21 +87,12 @@ subassocs t = configParser_ (\c -> (Just (C.subassocs t c), mempty))
 subgroups :: ConfigParser m => Name -> m [Name]
 subgroups t = configParser_ (\c -> (Just (C.subgroups t c), mempty))
 
--- |  Returns the current 'Config' that the parser is operating on.
---    This is perfectly analogous to 'Control.Monad.Reader.ask', however,
---    'ConfigParserA' cannot be an instance of
---    'Control.Monad.Reader.MonadReader' because of the 'Monad' constraint.
---    (Which is too strict of a constraint,  if you look past the name
---    of the class.)
-
-askConfig :: ConfigParser m => m Config
-askConfig =  configParser_ (\r -> (Just r, mempty))
 
 -- |  Modifies the 'Config' that a subparser is operating on.
 --    This is perfectly analogous to 'Control.Monad.Reader.local'.
 
-localConfig :: ConfigParser m => (Config -> Config) -> m a -> m a
-localConfig f m = configParser_ (\r -> unConfigParser_ m (f r))
+localConfig :: ConfigParser m => ConfigTransform -> m a -> m a
+localConfig f m = configParser_ (\r -> unConfigParser_ m (interpConfigTransform f r))
 
 runParserA :: ConfigParserA a -> Config -> (Maybe a, [ConfigError])
 runParserA = runParser

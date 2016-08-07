@@ -206,8 +206,8 @@ eventSources = do
 
 eventSource :: Text -> ConfigParserA EventSource
 eventSource name = do
-    localConfig (\c -> union (subconfig name      c)
-                             (subconfig "default" c)) $ do
+    localConfig (union (subconfig name     )
+                       (subconfig "default")) $ do
         libpqConnParams   <- localConfig (subconfig "postgres") (subassocs "")
         heartbeatInterval <- key "heartbeat-interval"
         heartbeatTimeout  <- key "heartbeat-timeout"

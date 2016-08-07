@@ -10,6 +10,8 @@ module Data.Configurator.Parser.Internal
     , ConfigParser (..)
     , ConfigParserM (..)
     , ConfigParserA (..)
+    , ConfigTransform(..)
+    , interpConfigTransform
     ) where
 
 import Data.Configurator.Parser.Implementation
