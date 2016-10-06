@@ -38,9 +38,11 @@ The interface of `configurator` basically is:
 The `IORef` is there to support configuration file reloading,  which
 is often done automatically.  So this results in the race condition:
 
-    lookup config "key0"
-    reload config  {- in another thread -}
-    lookup config "key1"
+    do
+      key0 <- lookup config "key0"
+      reload config  {- in another thread -}
+      key1 <- lookup config "key1"
+      return (key0, key1)
 
 Thus,  we have taken `key0` and `key1` from two versions of the
 configuration files,  with a overall result that is not necessarily
@@ -158,10 +160,10 @@ refactor the configuration file into something like this:
 ~~~
 event-sources {
     amazon-cloud {
-        postgres { host = "cloudevents.mydomain.com" }
+        postgres.host = "cloudevents.mydomain.com"
     }
     chicago-service-center {
-        postgres { host = "pgevents.customerdomain.com" }
+        postgres.host = "pgevents.customerdomain.com"
     }
     default {
         postgres {
