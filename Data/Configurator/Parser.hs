@@ -84,6 +84,9 @@ runParser m conf = let (ma, errs) = unConfigParser_ m conf
 subassocs :: ConfigParser m => Name -> m [(Name, Value)]
 subassocs t = configParser_ (\c -> (Just (C.subassocs t c), mempty))
 
+subassocs' :: ConfigParser m => Name -> m [(Name, Value)]
+subassocs' t = configParser_ (\c -> (Just (C.subassocs' t c), mempty))
+
 subgroups :: ConfigParser m => Name -> m [Name]
 subgroups t = configParser_ (\c -> (Just (C.subgroups t c), mempty))
 

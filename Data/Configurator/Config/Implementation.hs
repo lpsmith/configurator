@@ -71,8 +71,16 @@ foldPlan empty union lookup = loop
 type ConfigMap a = ConfigPlan (CB.CritBit Text a)
 newtype Config = Config (ConfigMap Value)
 
+-- FIXME: improve this implementation.
 subassocs :: Text -> ConfigMap a -> [(Text,a)]
-subassocs key c = subassocs_ subassocsMap key c
+subassocs key c = filter pred (subassocs' key c)
+  where
+    pred (name,_) = case stripPrefix key name of
+                      Nothing -> False -- shouldn't happen
+                      Just name' -> T.find ('.'==) name' == Nothing
+
+subassocs' :: Text -> ConfigMap a -> [(Text,a)]
+subassocs' key c = subassocs_ subassocsMap key c
 
 lookup :: Text -> ConfigMap a -> Maybe a
 lookup = foldPlan Nothing (<|>) CB.lookup

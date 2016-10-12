@@ -12,6 +12,7 @@ module Data.Configurator.Config
      , lookupWithName
      , subgroups
      , subassocs
+     , subassocs'
      , union
      , subconfig
      , superconfig
@@ -33,6 +34,9 @@ subgroups k (Config c) = C.subgroups k c
 
 subassocs :: Name -> Config -> [(Name,Value)]
 subassocs k (Config c) = C.subassocs k c
+
+subassocs' :: Name -> Config -> [(Name,Value)]
+subassocs' k (Config c) = C.subassocs' k c
 
 empty :: Config
 empty =  Config Empty
