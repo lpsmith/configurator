@@ -223,29 +223,75 @@ to run a subparser in a  different configuration context.   There are
 a few operators for modifying the configuration context:
 
 ~~~
-localConfig :: ConfigParser m => (Config -> Config) -> m a -> m a
+localConfig :: ConfigParser m => ConfigTransform -> m a -> m a
+
+data ConfigTransform  -- Conceptually, type ConfigTransform = Config -> Config
+
+instance Monoid ConfigTransform
+   -- mempty  is identity transformation
+   -- mappend is composition of transformations
 
 -- | Left-biased union of two configurations
-union :: Config -> Config -> Config
+union :: ConfigTransform -> ConfigTransform -> ConfigTransform
 
 -- | Restrict a configuration to a given group,  and remove that group
 --   prefix from all key names.
-subconfig :: Text -> Config -> Config
+subconfig :: Text -> ConfigTransform
 
 -- | Add a group name as a prefix to all key names
-superconfig :: Text -> Config -> Config
+superconfig :: Text -> ConfigTransform
 ~~~
 
 Note that these operators are implemented "symbolically",  so that
 they run in sub-linear (Possibly `O(1)`?) time.  Instead,  the cost of
 these are paid on each `(key,value)` lookup.
 
-As a convenience for this sort of use case, the configuration file
-syntax has been extended to include datum comments,  not unlike those
-found in Scheme and Clojure.   For example,  one can disable
-`chicago-service-center` by including a `#;` token before the group name;
-the next binding must be syntactically correct,  but will be otherwise
-ignored by the low-level parser.
+### Syntactic extensions
+
+Datum comments have been implemented, not unlike Scheme and Clojure.
+The `configurator-ng` parser will ignore any binding preceded by a `#;`
+token;  the binding following `#;` must be begin on the same line, and
+must be syntactically correct,  but will otherwise be ignored.
+
+This is a significant convenience for use cases like the event source
+example above:  for example one could disable `chicago-service-center`
+by putting `#;` before the name.   One can also use this as a slightly
+restricted means of block comments,  by writing `#; comment {` (the
+name doesn't matter) to begin the block comment,  and a matching `}`
+to end the comment.  Of course,  the intervening bindings must be
+syntactically correct,  so this isn't an exact substitute for block comments.
+
+Also, `configurator-ng` also allows group names to be inlined into other
+group and key names, separated by a dot character.  For example, these
+configuration snippets are all equivalent:
+
+~~~
+foo {
+  bar {
+    x = "Hello"
+    y = "World"
+  }
+}
+
+
+foo.bar {
+  x = "Hello"
+  y = "World"
+}
+
+
+foo {
+  bar.x = "Hello"
+  bar.y = "World"
+}
+
+
+foo.bar.x = "Hello"
+foo.bar.y = "World"
+~~~~
+
+With the original `configurator`, only the first snippet is
+syntactically legal.
 
 ### Configuration Change Subscriptions
 
