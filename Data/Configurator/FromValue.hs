@@ -7,22 +7,23 @@
 -- Maintainer:  Leon P Smith <leon@melding-monads.com>
 
 module Data.Configurator.FromValue
-     ( ConversionError(..)
-     , ConversionErrorWhy(..)
-     , defaultConversionError
-     , ValueParser
-     , runValueParser
-     , MaybeParser
+     ( MaybeParser
      , runMaybeParser
-     , ListParser
      , FromMaybeValue(..)
-     , FromValue(..)
-     , FromListValue(..)
      , optionalValue
      , requiredValue
+     , ValueParser
+     , runValueParser
+     , FromValue(..)
+     , ListParser
+     , FromListValue(..)
      , listValue
      , listValue'
      , listElem
+     , ConversionError(..)
+     , ConversionErrorWhy(..)
+     , defaultConversionError
+     -- * Assorted primitive value parsers
      , boundedIntegerValue
      , integralValue
      , fractionalValue

@@ -3,6 +3,13 @@
 -- Copyright:   (c) 2016 Leon P Smith
 -- License:     BSD3
 -- Maintainer:  Leon P Smith <leon@melding-monads.com>
+--
+-- This module provides the abstract data structure that backs @ConfigCache@
+-- and that @ConfigParser@s operate on.
+--
+-- It shouldn't be necessary to use this module much, if at all, in client
+-- code.  It might be considered semi-internal.  Please file a issue if you
+-- find a need to use it.
 
 module Data.Configurator.Config
      ( Config

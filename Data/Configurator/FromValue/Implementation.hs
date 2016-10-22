@@ -49,14 +49,20 @@ import           Foreign.C.Types(CFloat, CDouble)
 
 type ConversionErrors = MultiErrors ConversionError
 
+-- | An action to turn a 'Maybe' 'Value' into a value of type @a@, and/or
+--   report errors/warnings.
 newtype MaybeParser a = MaybeParser {
       unMaybeParser :: Maybe Value -> (Maybe a, ConversionErrors)
     } deriving (Functor, Typeable)
 
+-- | An action to turn a 'Value' into a value of type @a@, and/or
+--   report errors/warnings.
 newtype ValueParser a = ValueParser {
       unValueParser :: Value -> (Maybe a, ConversionErrors)
     } deriving (Functor, Typeable)
 
+-- | An action to turn a @['Value']@ into a value of type @a@, and/or
+--   report errors/warnings.
 data ListParserResult a =
      NonListError
    | ListError
@@ -202,6 +208,15 @@ instance Monad ListParser where
 instance Fail.MonadFail ListParser where
     fail msg = ListParser $ \_v -> (NonListError, singleError (failError msg))
 
+-- | Turns a 'ValueParser' into a 'MaybeParser'.  If the 'Maybe' 'Value'
+--   argument that the 'MaybeParser is passed is @Nothing@, then this returns
+--   the @Nothing@ value with no errors or warnings.  Otherwise, it passes
+--   the 'Value' to the subparser.  If the subparser returns a result value,
+--   then this returns @Just@ the value.   Otherwise, if the subparser does not
+--   return a value,  then this does not return a value.
+--
+--   Any errors/warnings returned by the subparser are returned exactly as-is.
+
 optionalValue :: ValueParser a -> MaybeParser (Maybe a)
 optionalValue p =
     MaybeParser $ \mv ->
@@ -209,6 +224,11 @@ optionalValue p =
          Nothing -> (Just Nothing, mempty)
          Just v  -> first (Just <$>) (unValueParser p v)
 
+-- | Turns a 'ValueParser' into a 'MaybeParser'.  If the 'Maybe' 'Value' the
+--   parser is passed is 'Nothing', then this does not return a value and
+--   also returns a 'missingValueError'.  Otherwise,  the 'Value' is passed
+--   to the subparser,  and the result and any errors/warnings are returned
+--   as-is.
 
 requiredValue :: forall a. Typeable a => ValueParser a -> MaybeParser a
 requiredValue p =
@@ -227,6 +247,19 @@ missingValueError funcName typ = defaultConversionError {
       conversionErrorType = Just typ
    }
 
+-- | Turns a 'ListParser' into a 'ValueParser'.  It first checks that the
+--   'Value' the 'ValueParser' is passed is a 'List' Value.  If it's not,
+--   this returns no result as well as a 'typeError'.  Otherwise, it passes
+--   the list of results to the 'ListParser' subparser.
+--
+--   If the subparser consumes all of the list elements,  this returns the
+--   value and errors as-is.   If there are leftover list elements,  this
+--   returns the value, and adds a message warning of the extra elements
+--   to the list of errors.
+--
+--   The difference from 'listValue\'' is that this returns values with
+--   unconsumed list elements (discarding the list elements).
+
 listValue :: forall a. Typeable a => ListParser a -> ValueParser a
 listValue p =
     ValueParser $ \v ->
@@ -244,6 +277,20 @@ listValue p =
     extraErr vs = singleError $ extraValuesError fn vs (typeOf (undefined :: a))
     typeErr  v  = singleError $ typeError        fn v  (typeOf (undefined :: a))
 
+-- | Turns a 'ListParser' into a 'ValueParser'.  It first checks that the
+--   'Value' the 'ValueParser' is passed is a 'List' Value.  If it's not,
+--   this returns no result as well as a 'typeError'.  Otherwise, it passes
+--   the list of results to the 'ListParser' subparser.
+--
+--   If the subparser consumes all of the list elements,  this returns the
+--   value and errors as-is.   If there are leftover list elements,  this
+--   returns no value, and adds a message warning of the extra elements
+--   to the list of errors.
+--
+--   The difference from 'listValue' is that this never returns a value if
+--   there are unconsumed list elements. (discarding both the value returned
+--   and the list element.)
+
 listValue' :: forall a. Typeable a => ListParser a -> ValueParser a
 listValue' p =
     ValueParser $ \v ->
@@ -260,6 +307,22 @@ listValue' p =
     fn = "listValue'"
     extraErr vs = singleError $ extraValuesError fn vs (typeOf (undefined :: a))
     typeErr  v  = singleError $ typeError        fn v  (typeOf (undefined :: a))
+
+-- | Turns a 'ValueParser' into a 'ListParser' that consumes a single element.
+--
+--   If there are no list elements left, this returns list error value and an
+--   'ExhaustedValues' error.
+--
+--   If there is an element left,  it is passed to the value parser.  If the
+--   value parser returns a value,  it is returned along with the errors as-is.
+--   If the value parser returns no value,  then this returns a non-list error
+--   value and the list of errors returned by the value parser.
+--
+--   The difference between a "list error value" and a "non-list error value",
+--   is that the 'Alternative' instance for 'ListParser' recovers from "list
+--   error" values but does not recover from "non-list error" values.   This
+--   behavior was chosen so that the 'optional', 'some', and 'many' combinators
+--   work on 'ListParser's in a way that is hopefully least surprising.
 
 listElem :: forall a. (Typeable a) => ValueParser a -> ListParser a
 listElem p =
