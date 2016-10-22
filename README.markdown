@@ -325,7 +325,7 @@ debounce notEq callback = do
                Nothing  -> True
                Just old -> notEq old new
         then do
-          writeIORef last_seen
+          writeIORef last_seen (Just new)
           callback new
         else do
           return ()
