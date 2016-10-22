@@ -28,6 +28,7 @@ module Data.Configurator.Parser
     , parserA
     , parserM
     , subassocs
+    , subassocs'
     , subgroups
     , localConfig
     , union
@@ -40,10 +41,13 @@ module Data.Configurator.Parser
 
 import           Prelude hiding (null)
 
-import           Control.Applicative hiding (optional, empty)
 import           Data.DList (DList)
 import qualified Data.DList as DL
-import           Data.Monoid(Monoid(..),(<>))
+
+#if !(MIN_VERSION_base(4,8,0))
+import           Data.Monoid(Monoid(..))
+#endif
+import           Data.Monoid((<>))
 import           Data.Configurator.Config
                    ( Config )
 import           Data.Configurator.Types.Internal hiding (Group)

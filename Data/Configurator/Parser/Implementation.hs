@@ -8,15 +8,18 @@
 
 module Data.Configurator.Parser.Implementation where
 
-import Control.Monad (ap)
-import Data.Configurator.Config (Config)
+#if !(MIN_VERSION_base(4,8,0))
+import           Control.Applicative
+#endif
+import           Control.Monad (ap)
+import           Data.Configurator.Config (Config)
 import qualified Data.Configurator.Config as C
-import Data.Configurator.Config.Implementation (ConfigPlan(..))
-import Data.Configurator.Types (ConfigError)
-import Data.DList (DList)
-import Data.Monoid
-import Data.Text (Text)
-import Data.Typeable (Typeable)
+import           Data.Configurator.Config.Implementation (ConfigPlan(..))
+import           Data.Configurator.Types (ConfigError)
+import           Data.DList (DList)
+import           Data.Monoid
+import           Data.Text (Text)
+import           Data.Typeable (Typeable)
 
 type RMW r w a = r -> (Maybe a, w)
 

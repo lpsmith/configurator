@@ -13,7 +13,6 @@ module Data.Configurator.FromValue.Implementation where
 
 import           Control.Applicative
 import           Control.Arrow (first, second)
-import           Control.Exception (Exception)
 import           Control.Monad (ap)
 import qualified Control.Monad.Fail as Fail
 import qualified Data.ByteString as B
@@ -30,8 +29,6 @@ import           Data.Configurator.Types.Internal
                    , singleError
                    , toErrors
                    )
-import           Data.DList (DList)
-import qualified Data.DList as DList
 import           Data.Fixed (Fixed, HasResolution)
 import           Data.Int(Int8, Int16, Int32, Int64)
 import           Data.Monoid
@@ -44,6 +41,9 @@ import qualified Data.Text as T
 import qualified Data.Text.Lazy as L
 import           Data.Text.Encoding(encodeUtf8)
 import           Data.Typeable(Typeable, TypeRep, typeOf)
+#if !(MIN_VERSION_base(4,8,0))
+import           Data.Word(Word)
+#endif
 import           Data.Word(Word8, Word16, Word32, Word64)
 import           Foreign.C.Types(CFloat, CDouble)
 

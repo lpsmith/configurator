@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, OverloadedStrings, RecordWildCards,
+{-# LANGUAGE CPP, BangPatterns, OverloadedStrings, RecordWildCards,
     ScopedTypeVariables, TupleSections #-}
 
 -- |
@@ -61,18 +61,22 @@ module Data.Configurator
     , readConfig
     ) where
 
+#if !(MIN_VERSION_base(4,8,0))
 import Control.Applicative ((<$>))
+#endif
 import Control.Concurrent (ThreadId, forkIO, threadDelay)
 import Control.Exception (SomeException, evaluate, handle, throwIO, try)
-import Control.Monad (foldM, forM, forM_, join, when, msum)
+import Control.Monad (foldM, forM, forM_, when, msum)
 import Data.Configurator.Syntax (interp, topLevel)
 import Data.Configurator.Types.Internal
 import Data.Configurator.Config.Internal(ConfigPlan(ConfigPlan), Config(Config))
 import Data.Int (Int64)
 import Data.IORef (atomicModifyIORef, newIORef, readIORef)
 import Data.List (tails)
-import Data.Maybe (fromMaybe, isJust)
+import Data.Maybe (isJust)
+#if !(MIN_VERSION_base(4,8,0))
 import Data.Monoid (mconcat)
+#endif
 import Data.Scientific ( toBoundedInteger, toRealFloat )
 import Data.Text.Lazy.Builder (fromString, fromText, toLazyText)
 import Data.Text.Lazy.Builder.Int (decimal)
