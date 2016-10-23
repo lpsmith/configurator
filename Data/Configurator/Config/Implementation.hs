@@ -69,9 +69,11 @@ foldPlan empty union lookup = loop
 
 
 type ConfigMap a = ConfigPlan (CB.CritBit Text a)
+
+-- | A 'Config' is a finite map from 'Text' to 'Value'.
 newtype Config = Config (ConfigMap Value)
 
--- FIXME: improve this implementation.
+-- | FIXME: improve this implementation.
 subassocs :: Text -> ConfigMap a -> [(Text,a)]
 subassocs key c = filter pred (subassocs' key c)
   where

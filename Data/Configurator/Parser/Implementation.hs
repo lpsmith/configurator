@@ -144,8 +144,13 @@ instance ConfigParser ConfigParserA where
     configParser_   = ConfigParserA
     unConfigParser_ = unConfigParserA
 
+-- | Conceptually, a 'ConfigTransform' is a function 'Config' @->@ 'Config'.
+--   It's a restricted subset of such functions as to preserve the possibility
+--   of reliable dependency tracking in later versions of configurator-ng.
 newtype ConfigTransform = ConfigTransform (ConfigPlan ())
 
+-- | 'mempty' is the identity 'ConfigTransform',  'mappend' is the composition
+--   of two 'ConfigTransform's.
 instance Monoid ConfigTransform where
    mempty = ConfigTransform (ConfigPlan ())
    (ConfigTransform x) `mappend` (ConfigTransform y) = (ConfigTransform (go x))
@@ -156,12 +161,23 @@ instance Monoid ConfigTransform where
        go (Subconfig pre a)   = Subconfig pre (go a)
        go Empty               = Empty
 
+-- Conceptually,  @'union' f g = \config -> union\' (f config) (g config)@,
+-- where @union\'@ is the left-biased union of two 'Config's.
 union :: ConfigTransform -> ConfigTransform -> ConfigTransform
 union (ConfigTransform x) (ConfigTransform y) = ConfigTransform (Union x y)
 
+-- @'subconfig' group@ restricts the configuration to those values that
+-- are contained within @group@ (either directly,  or contained within a
+-- descendant value grouping),  and removes the @group@ prefix from all
+-- of the keys in the map.  It's analogous to the @cd@ (change directory)
+-- command on common operating systems,  except that @subconfig@ can only
+-- descend down the directory tree,  and cannot ascend into a parent
+-- directory.
 subconfig :: Text -> ConfigTransform -> ConfigTransform
 subconfig k (ConfigTransform x) = ConfigTransform (Subconfig k x)
 
+-- @'superconfig' group@ adds the @group@ prefix to all keys in the map.
+-- It is vaguely analogous to the @mount@ command on unix operating systems.
 superconfig :: Text -> ConfigTransform -> ConfigTransform
 superconfig k (ConfigTransform x) = ConfigTransform (Superconfig k x)
 
