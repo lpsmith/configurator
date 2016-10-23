@@ -28,7 +28,8 @@ type ConfigErrors = Maybe (DList ConfigError)
 -- | A @'ConfigParserM' a@ computation produces a value of type @'Maybe' a@
 --   from a given 'Config',  in addition to a list of diagnostic messages
 --   which may be interpreted as warnings or errors as deemed appropriate.
---   Errors are cre
+--   If the value returned by a computation is 'Nothing', then no subsequent
+--   actions (e.g. via @\<*\>@ or @>>=@) will be performed.
 
 newtype ConfigParserM a
     = ConfigParserM { unConfigParserM :: RMW Config ConfigErrors a }
@@ -49,8 +50,10 @@ instance Monad ConfigParserM where
                          Just a  -> let (mb, w') = unConfigParserM (k a) r
                                      in (mb, w <> w')
 
--- | After an error,  actions of type 'ConfigParserA' will continue to
---   run in order to produce more error messages.
+-- | After executing an action that returns a 'Nothing' value,
+--   actions of type 'ConfigParserA' will continue to run in order to
+--   produce more error messages.  For this reason,  'ConfigParserA' does
+--   not have a proper 'Monad' instance.  (But see 'unsafeBind')
 
 newtype ConfigParserA a
     = ConfigParserA { unConfigParserA :: RMW Config ConfigErrors a }
@@ -62,6 +65,28 @@ instance Applicative ConfigParserA where
                   let (mf, w ) = unConfigParserA f r
                       (ma, w') = unConfigParserA a r
                    in (mf <*> ma, w <> w')
+
+#if __GLASGOW_HASKELL__ >= 800
+{-# DEPRECATED unsafeBind "Use the ApplicativeDo language extension instead" #-}
+#endif
+
+-- |  The purpose of this function is to make it convenient to use do-notation
+--    with 'ConfigParserA',  either by defining a Monad instance or locally
+--    rebinding '(>>=)'.    Be warned that this is an abuse,  and incorrect
+--    usage can result in exceptions.   A safe way to use this function
+--    would be to treat is as applicative-do notation.  A safer alternative
+--    would be to use the @ApplicativeDo@ language extension available in
+--    GHC 8.0 and not use this function at all.
+
+unsafeBind :: ConfigParserA a -> (a -> ConfigParserA b) -> ConfigParserA b
+unsafeBind m k = ConfigParserA $ \r ->
+                   case unConfigParserA m r of
+                     (Nothing, w) -> let (_, w')  = unConfigParserA (k err) r
+                                      in (Nothing, w <> w')
+                     (Just a,  w) -> let (mb, w') = unConfigParserA (k a) r
+                                      in (mb, w <> w')
+  where err = error "unsafeBind on ConfigParserA used incorrectly"
+
 
 {--
 --- There are at least three obvious "implementations" of <|> on ConfigParserM

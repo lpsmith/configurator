@@ -60,40 +60,113 @@ import qualified Data.Configurator.Config as C
 import qualified Data.Configurator.Config.Internal as CI
 import           Data.Configurator.Parser.Implementation
 
-#if __GLASGOW_HASKELL__ >= 800
-{-# DEPRECATED unsafeBind "Use the ApplicativeDo language extension instead" #-}
-#endif
-
--- |  The purpose of this function is to make it convenient to use do-notation
---    with 'ConfigParserA',  either by defining a Monad instance or locally
---    rebinding '(>>=)'.    Be warned that this is an abuse,  and incorrect
---    usage can result in exceptions.   A safe way to use this function
---    would be to treat is as applicative-do notation.  A safer alternative
---    would be to use the @ApplicativeDo@ language extension available in
---    GHC 8.0 and not use this function at all.
-
-unsafeBind :: ConfigParserA a -> (a -> ConfigParserA b) -> ConfigParserA b
-unsafeBind m k = ConfigParserA $ \r ->
-                   case unConfigParserA m r of
-                     (Nothing, w) -> let (_, w')  = unConfigParserA (k err) r
-                                      in (Nothing, w <> w')
-                     (Just a,  w) -> let (mb, w') = unConfigParserA (k a) r
-                                      in (mb, w <> w')
-  where err = error "unsafeBind on ConfigParserA used incorrectly"
-
 runParser :: ConfigParser m => m a -> Config -> (Maybe a, [ConfigError])
 runParser m conf = let (ma, errs) = unConfigParser_ m conf
                     in (ma, toErrors errs)
 
+{- | Returns all the value bindings from the current configuration context
+--   that is contained within the given subgroup, in lexicographic order.
+--   For example, given the following context:
+
+@
+x = 1
+foo {
+  x = 2
+  bar {
+    y = on
+  }
+}
+foo = \"Hello\"
+@
+
+Then the following arguments to 'subassocs' would return the following lists:
+
+@
+subassocs ""         ==>  [("foo",String \"Hello\"),("x",Number 1)]
+subassocs "foo"      ==>  [("foo.x",Number 2)]
+subassocs "foo.bar"  ==>  [("foo.bar.x",Bool True)]
+@
+
+All other arguments to subassocs would return [] in the given context.
+-}
+
+
 subassocs :: ConfigParser m => Name -> m [(Name, Value)]
 subassocs t = configParser_ (\c -> (Just (C.subassocs t c), mempty))
+
+{- | Returns all the value bindings from the current configuration context
+--   that is contained within the given subgroup and all of it's subgroups
+--   in lexicographic order. For example, given the following context:
+
+@
+x = 1
+foo {
+  x = 2
+  bar {
+    y = on
+  }
+}
+foo = \"Hello\"
+@
+
+Then the following arguments to 'subassocs\'' would return the following lists:
+
+@
+subassocs\' ""         ==>  [ ("foo"       , String \"Hello\")
+                           , ("foo.bar.y" , Bool True     )
+                           , ("foo.x"     , Number 2      )
+                           , ("x"         , Number 1      )
+                           ]
+subassocs\' "foo"      ==>  [ ("foo.bar.y" , Bool True     )
+                           , ("foo.x"     , Number 2      )
+                           ]
+subassocs\' "foo.bar"  ==>  [ ("foo.bar.y" , Bool True     )
+                           ]
+@
+
+All other arguments to @subassocs\'@ would return @[]@ in the given context.
+-}
 
 subassocs' :: ConfigParser m => Name -> m [(Name, Value)]
 subassocs' t = configParser_ (\c -> (Just (C.subassocs' t c), mempty))
 
+{- | Returns all the non-empty value groupings that is directly under
+--   the argument grouping in the current configuration context.
+--   For example, given the following context:
+
+@
+foo { }
+bar {
+  a {
+    x = 1
+  }
+  b {
+    c {
+      y = 2
+    }
+  }
+}
+default
+  a {
+    x = 3
+  }
+}
+@
+
+Then the following arguments to 'subgroups' would return the following lists:
+
+@
+subgroups ""         ==>  [ "bar", "default" ]
+subgroups "bar"      ==>  [ "bar.a", "bar.b" ]
+subgroups "bar.b"    ==>  [ "bar.b.c" ]
+subgroups "default"  ==>  [ "default.a" ]
+@
+
+All other arguments to @subgroups@ would return @[]@ in the given context.
+-}
+
 subgroups :: ConfigParser m => Name -> m [Name]
 subgroups t = configParser_ (\c -> (Just (C.subgroups t c), mempty))
-
 
 -- |  Modifies the 'Config' that a subparser is operating on.
 --    This is perfectly analogous to 'Control.Monad.Reader.local'.
@@ -101,24 +174,50 @@ subgroups t = configParser_ (\c -> (Just (C.subgroups t c), mempty))
 localConfig :: ConfigParser m => ConfigTransform -> m a -> m a
 localConfig f m = configParser_ (\r -> unConfigParser_ m (interpConfigTransform f r))
 
+-- |  Exactly the same as 'runParser',  except less polymorphic
+
 runParserA :: ConfigParserA a -> Config -> (Maybe a, [ConfigError])
 runParserA = runParser
+
+-- |  Exactly the same as 'runParser',  except less polymorphic
 
 runParserM :: ConfigParserM a -> Config -> (Maybe a, [ConfigError])
 runParserM = runParser
 
+-- |  Lift a 'ConfigParserM' action into a generic 'ConfigParser'
+--    action.  Note that this does not change the semantics of the
+--    argument,  it just allows a 'ConfigParserM' computation to be
+--    embedded in another 'ConfigParser' computation of either variant.
+
 parserM :: ConfigParser m => ConfigParserM a -> m a
 parserM (ConfigParserM m) = configParser_ m
 
+-- |  Lift a 'ConfigParserA' action into a generic 'ConfigParser'
+--    action.  Note that this does not change the semantics of the
+--    argument,  it just allows a 'ConfigParserA' computation to be
+--    embedded in another 'ConfigParser' computation of either variant.
+
 parserA :: ConfigParser m => ConfigParserA a -> m a
 parserA (ConfigParserA m) = configParser_ m
+
+-- |  Given the expression @'recover' action@, the @action@ will be
+--    run,  and if it returns no value,  @recover action@ will return
+--    'Nothing'.   If @action@ returns the value @a@, then
+--    @recover action@ will return the value @'Just' a@.  Any errors
+--    or warnings are passed through as-is.
 
 recover :: ConfigParser m => m a -> m (Maybe a)
 recover m = configParser_ $ \r -> let (ma, errs) = unConfigParser_ m r
                                    in (Just ma, errs)
 
+--  Look up a given value in the current configuration context,  and convert
+--  the value using the 'fromMaybeValue' method.
+
 key :: (ConfigParser m, FromMaybeValue a) => Name -> m a
 key name = keyWith name fromMaybeValue
+
+--  Look up a given value in the current configuration context,  and convert
+--  the value using the 'MaybeParser' argument.
 
 keyWith :: (ConfigParser m) => Name -> MaybeParser a -> m a
 keyWith name parser =
