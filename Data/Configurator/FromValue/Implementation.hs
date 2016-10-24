@@ -49,26 +49,26 @@ import           Foreign.C.Types(CFloat, CDouble)
 
 type ConversionErrors = MultiErrors ConversionError
 
--- | An action to turn a 'Maybe' 'Value' into a value of type @a@, and/or
---   report errors/warnings.
+-- | An action to turn a 'Maybe' 'Value' into zero or one values of type @a@,
+--   and possibly report errors/warnings.
 newtype MaybeParser a = MaybeParser {
       unMaybeParser :: Maybe Value -> (Maybe a, ConversionErrors)
     } deriving (Functor, Typeable)
 
--- | An action to turn a 'Value' into a value of type @a@, and/or
---   report errors/warnings.
+-- | An action to turn a 'Value' into zero or one values of type @a@,
+--   and possibly report errors/warnings.
 newtype ValueParser a = ValueParser {
       unValueParser :: Value -> (Maybe a, ConversionErrors)
     } deriving (Functor, Typeable)
 
--- | An action to turn a @['Value']@ into a value of type @a@, and/or
---   report errors/warnings.
 data ListParserResult a =
      NonListError
    | ListError
    | ListOk a [Value]
      deriving (Functor, Typeable)
 
+-- | An action to turn a @['Value']@ into zero or one values of type @a@,
+--   and possibly report errors/warnings.
 newtype ListParser a = ListParser {
       unListParser :: [Value] -> (ListParserResult a, ConversionErrors)
     } deriving (Functor, Typeable)
@@ -208,12 +208,13 @@ instance Monad ListParser where
 instance Fail.MonadFail ListParser where
     fail msg = ListParser $ \_v -> (NonListError, singleError (failError msg))
 
--- | Turns a 'ValueParser' into a 'MaybeParser'.  If the 'Maybe' 'Value'
---   argument that the 'MaybeParser is passed is @Nothing@, then this returns
---   the @Nothing@ value with no errors or warnings.  Otherwise, it passes
---   the 'Value' to the subparser.  If the subparser returns a result value,
---   then this returns @Just@ the value.   Otherwise, if the subparser does not
---   return a value,  then this does not return a value.
+-- | Turns a 'ValueParser' into a 'MaybeParser'.  If the 'Maybe' 'Value' the
+--   parser is passed is 'Nothing' (which normally means a key was not found),
+--   then this returns the @Nothing@ value with no errors or warnings.
+--   Otherwise, it passes the 'Value' to the subparser.  If the
+--   subparser returns a result value, then this returns 'Just' the value.
+--   Otherwise, if the subparser does not return a value,  then this does
+--   not return a value.
 --
 --   Any errors/warnings returned by the subparser are returned exactly as-is.
 
@@ -225,10 +226,10 @@ optionalValue p =
          Just v  -> first (Just <$>) (unValueParser p v)
 
 -- | Turns a 'ValueParser' into a 'MaybeParser'.  If the 'Maybe' 'Value' the
---   parser is passed is 'Nothing', then this does not return a value and
---   also returns a 'missingValueError'.  Otherwise,  the 'Value' is passed
---   to the subparser,  and the result and any errors/warnings are returned
---   as-is.
+--   parser is passed is 'Nothing' (which normally means a key was not found),
+--   then this does not return a value and also returns a 'missingValueError'.
+--   Otherwise,  the 'Value' is passed to the subparser,  and the result
+--   and any errors/warnings are returned as-is.
 
 requiredValue :: forall a. Typeable a => ValueParser a -> MaybeParser a
 requiredValue p =

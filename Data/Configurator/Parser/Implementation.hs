@@ -50,8 +50,8 @@ instance Monad ConfigParserM where
                          Just a  -> let (mb, w') = unConfigParserM (k a) r
                                      in (mb, w <> w')
 
--- | After executing an action that returns a 'Nothing' value,
---   actions of type 'ConfigParserA' will continue to run in order to
+-- | After executing a subcomputation that returns a 'Nothing' value,
+--   computations of type 'ConfigParserA' will continue to run in order to
 --   produce more error messages.  For this reason,  'ConfigParserA' does
 --   not have a proper 'Monad' instance.  (But see 'unsafeBind')
 
