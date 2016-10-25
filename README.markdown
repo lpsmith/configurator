@@ -259,7 +259,8 @@ by putting `#;` before the name.   One can also use this as a slightly
 restricted means of block comments,  by writing `#; comment {` (the
 name doesn't matter) to begin the block comment,  and a matching `}`
 to end the comment.  Of course,  the intervening bindings must be
-syntactically correct,  so this isn't an exact substitute for block comments.
+syntactically correct,  so this isn't an exact substitute for block
+comments.
 
 Also, `configurator-ng` also allows group names to be inlined into other
 group and key names, separated by a dot character.  For example, these
@@ -292,6 +293,11 @@ foo.bar.y = "World"
 
 With the original `configurator`, only the first snippet is
 syntactically legal.
+
+Finally, `configurator-ng` supports scientific notation for numerical
+values,  via the
+[`scientific`](https://hackage.haskell.org/package/scientific)
+package,  which corresponds closely to typical floating point syntax.
 
 ### Configuration Change Subscriptions
 

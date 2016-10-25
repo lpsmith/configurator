@@ -16,7 +16,9 @@
 -- Note that while the "Data.Configurator.Parser" and
 -- "Data.Configurator.FromValue" should be quite stable at this point,
 -- this module is likely to be subjected to significant breaking changes in
--- subsequent versions of configurator-ng.
+-- subsequent versions of configurator-ng.   So please do file an issue
+-- if you have any opinions or especially needs with regards to
+-- configuration (re)loading,  change notifications,  etc.
 
 module Data.Configurator
     (
@@ -424,7 +426,7 @@ notifySubscribers ConfigCache{..} m m' subs = H.foldrWithKey go (return ()) subs
 --   are case sensitive, so do not try to use @True@ instead of
 --   @true@!
 --
--- * Integers, represented in base 10.
+-- * Decimal fractions,  expressed in scientific notation.
 --
 -- * Unicode strings, represented as text (possibly containing escape
 --   sequences) surrounded by double quotes.

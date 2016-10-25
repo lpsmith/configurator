@@ -1,38 +1,37 @@
 name:            configurator-ng
-version:         0.3.0.0
+version:         0.0.0.0
 license:         BSD3
 license-file:    LICENSE
 category:        Configuration, Data
 copyright:       Copyright 2011 MailRank, Inc.
                  Copyright 2011-2014 Bryan O'Sullivan
-author:          Bryan O'Sullivan <bos@serpentine.com>
-maintainer:      Bryan O'Sullivan <bos@serpentine.com>
+                 Copyright 2015-2016 Leon P Smith
+author:          Bryan O'Sullivan, Leon P Smith
+maintainer:      Leon P Smith <leon@melding-monads.com>
 stability:       experimental
-tested-with:     GHC == 7.0, GHC == 7.2, GHC == 7.4, GHC == 7.6, GHC == 7.8
-synopsis:        Configuration management
+-- tested-with:     GHC == 7.0, GHC == 7.2, GHC == 7.4, GHC == 7.6, GHC == 7.8
+synopsis:        The next generation of configuration management
 cabal-version:   >= 1.8
-homepage:        http://github.com/bos/configurator
-bug-reports:     http://github.com/bos/configurator/issues
+homepage:        http://github.com/lpsmith/configurator-ng
+bug-reports:     http://github.com/lpsmith/configurator-ng/issues
 build-type:      Simple
 description:
   A configuration management library for programs and daemons.
   .
   Features include:
   .
-  * Automatic, dynamic reloading in response to modifications to
-    configuration files.
-  .
   * A simple, but flexible, configuration language, supporting several
     of the most commonly needed types of data, along with
     interpolation of strings from the configuration or the system
     environment (e.g. @$(HOME)@).
   .
-  * Subscription-based notification of changes to configuration
-    properties.
-  .
   * An @import@ directive allows the configuration of a complex
     application to be split across several smaller files, or common
     configuration data to be shared across several applications.
+  .
+  * An expressive applicative/monadic high-level parsing interface
+    to gracefully scale to more complicated configuration needs,  with
+    powerful diagnostic messaging mechanism.
   .
   For details of the configuration file format, see
   <http://hackage.haskell.org/packages/archive/configurator/latest/doc/html/Data-Configurator.html>.
@@ -75,7 +74,6 @@ library
     data-ordlist,
     fail,
     hashable,
-    mtl,
     scientific,
     text >= 0.11.1.0,
     unix-compat,
