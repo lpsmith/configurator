@@ -50,7 +50,9 @@ instance Monad ConfigParserM where
                          Just a  -> let (mb, w') = unConfigParserM (k a) r
                                      in (mb, w <> w')
 
--- | After executing a subcomputation that returns a 'Nothing' value,
+-- | A @'ConfigParserM' a@ computation produces a value of type @'Maybe' a@
+--   from a given 'Config',  in addition to a list of diagnostic messages.
+--   After executing a subcomputation that returns a 'Nothing' value,
 --   computations of type 'ConfigParserA' will continue to run in order to
 --   produce more error messages.  For this reason,  'ConfigParserA' does
 --   not have a proper 'Monad' instance.  (But see 'unsafeBind')

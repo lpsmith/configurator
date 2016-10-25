@@ -4,13 +4,19 @@
 -- |
 -- Module:      Data.Configurator
 -- Copyright:   (c) 2011 MailRank, Inc.
+--              (c) 2015-2016 Leon P Smith
 -- License:     BSD3
--- Maintainer:  Bryan O'Sullivan <bos@serpentine.com>
+-- Maintainer:  Leon P Smith <leon@melding-monads.com>
 -- Stability:   experimental
 -- Portability: portable
 --
 -- A simple (yet powerful) library for working with configuration
 -- files.
+--
+-- Note that while the "Data.Configurator.Parser" and
+-- "Data.Configurator.FromValue" should be quite stable at this point,
+-- this module is likely to be subjected to significant breaking changes in
+-- subsequent versions of configurator-ng.
 
 module Data.Configurator
     (

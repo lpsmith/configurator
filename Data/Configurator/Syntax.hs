@@ -3,8 +3,9 @@
 -- |
 -- Module:      Data.Configurator.Syntax
 -- Copyright:   (c) 2011 MailRank, Inc.
+--              (c) 2015-2016 Leon P Smith
 -- License:     BSD3
--- Maintainer:  Bryan O'Sullivan <bos@serpentine.com>
+-- Maintainer:  Leon P Smith <leon@melding-monads.com>
 -- Stability:   experimental
 -- Portability: portable
 --
