@@ -94,7 +94,7 @@ single file, consistent reads of multiple files is trickier.)
 
 Another advantage of the `ConfigParser` interface is that it makes it
 easier and more convenient to validate a (sub-)configuration as an
-entirety,  and thus also make more intelligent decisions about to do
+entirety,  and thus also make more intelligent decisions about what to do
 in cases of misconfigurations.  For example, one might want to continue
 running on the last known good configuration,  and raise a big red
 flag in a monitoring solution.   The goal is to provide mechanism,
