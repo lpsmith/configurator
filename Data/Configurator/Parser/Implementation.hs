@@ -163,12 +163,12 @@ instance Monoid ConfigTransform where
        go (Subconfig pre a)   = Subconfig pre (go a)
        go Empty               = Empty
 
--- Conceptually,  @'union' f g = \config -> union\' (f config) (g config)@,
+-- | Conceptually,  @'union' f g = \\config -> union\' (f config) (g config)@,
 -- where @union\'@ is the left-biased union of two 'Config's.
 union :: ConfigTransform -> ConfigTransform -> ConfigTransform
 union (ConfigTransform x) (ConfigTransform y) = ConfigTransform (Union x y)
 
--- @'subconfig' group@ restricts the configuration to those values that
+-- | @'subconfig' group@ restricts the configuration to those values that
 -- are contained within @group@ (either directly,  or contained within a
 -- descendant value grouping),  and removes the @group@ prefix from all
 -- of the keys in the map.  It's analogous to the @cd@ (change directory)
@@ -178,7 +178,7 @@ union (ConfigTransform x) (ConfigTransform y) = ConfigTransform (Union x y)
 subconfig :: Text -> ConfigTransform -> ConfigTransform
 subconfig k (ConfigTransform x) = ConfigTransform (Subconfig k x)
 
--- @'superconfig' group@ adds the @group@ prefix to all keys in the map.
+-- | @'superconfig' group@ adds the @group@ prefix to all keys in the map.
 -- It is vaguely analogous to the @mount@ command on unix operating systems.
 superconfig :: Text -> ConfigTransform -> ConfigTransform
 superconfig k (ConfigTransform x) = ConfigTransform (Superconfig k x)

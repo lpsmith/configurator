@@ -64,9 +64,10 @@ runParser :: ConfigParser m => m a -> Config -> (Maybe a, [ConfigError])
 runParser m conf = let (ma, errs) = unConfigParser_ m conf
                     in (ma, toErrors errs)
 
-{- | Returns all the value bindings from the current configuration context
---   that is contained within the given subgroup, in lexicographic order.
---   For example, given the following context:
+{- |
+Returns all the value bindings from the current configuration context that is
+contained within the given subgroup, in lexicographic order. For example,
+given the following context:
 
 @
 x = 1
@@ -82,21 +83,21 @@ foo = \"Hello\"
 Then the following arguments to 'subassocs' would return the following lists:
 
 @
-subassocs ""         ==>  [("foo",String \"Hello\"),("x",Number 1)]
-subassocs "foo"      ==>  [("foo.x",Number 2)]
-subassocs "foo.bar"  ==>  [("foo.bar.x",Bool True)]
+subassocs \"\"         ==>  [(\"foo\",String \"Hello\"),(\"x\",Number 1)]
+subassocs \"foo\"      ==>  [(\"foo.x\",Number 2)]
+subassocs \"foo.bar\"  ==>  [(\"foo.bar.x\",Bool True)]
 @
 
-All other arguments to subassocs would return [] in the given context.
+All other arguments to @subassocs@ would return @[]@ in the given context.
 -}
-
 
 subassocs :: ConfigParser m => Name -> m [(Name, Value)]
 subassocs t = configParser_ (\c -> (Just (C.subassocs t c), mempty))
 
-{- | Returns all the value bindings from the current configuration context
---   that is contained within the given subgroup and all of it's subgroups
---   in lexicographic order. For example, given the following context:
+{- |
+Returns all the value bindings from the current configuration context that is
+contained within the given subgroup and all of it's subgroups in lexicographic
+order. For example, given the following context:
 
 @
 x = 1
@@ -112,15 +113,15 @@ foo = \"Hello\"
 Then the following arguments to 'subassocs\'' would return the following lists:
 
 @
-subassocs\' ""         ==>  [ ("foo"       , String \"Hello\")
-                           , ("foo.bar.y" , Bool True     )
-                           , ("foo.x"     , Number 2      )
-                           , ("x"         , Number 1      )
+subassocs\' \"\"         ==>  [ (\"foo\"       , String \"Hello\")
+                           , (\"foo.bar.y\" , Bool True     )
+                           , (\"foo.x\"     , Number 2      )
+                           , (\"x\"         , Number 1      )
                            ]
-subassocs\' "foo"      ==>  [ ("foo.bar.y" , Bool True     )
-                           , ("foo.x"     , Number 2      )
+subassocs\' \"foo\"      ==>  [ (\"foo.bar.y\" , Bool True     )
+                           , (\"foo.x\"     , Number 2      )
                            ]
-subassocs\' "foo.bar"  ==>  [ ("foo.bar.y" , Bool True     )
+subassocs\' \"foo.bar\"  ==>  [ (\"foo.bar.y\" , Bool True     )
                            ]
 @
 
@@ -130,9 +131,10 @@ All other arguments to @subassocs\'@ would return @[]@ in the given context.
 subassocs' :: ConfigParser m => Name -> m [(Name, Value)]
 subassocs' t = configParser_ (\c -> (Just (C.subassocs' t c), mempty))
 
-{- | Returns all the non-empty value groupings that is directly under
---   the argument grouping in the current configuration context.
---   For example, given the following context:
+{- |
+Returns all the non-empty value groupings that is directly under the argument
+grouping in the current configuration context.  For example, given the
+following context:
 
 @
 foo { }
@@ -156,10 +158,10 @@ default
 Then the following arguments to 'subgroups' would return the following lists:
 
 @
-subgroups ""         ==>  [ "bar", "default" ]
-subgroups "bar"      ==>  [ "bar.a", "bar.b" ]
-subgroups "bar.b"    ==>  [ "bar.b.c" ]
-subgroups "default"  ==>  [ "default.a" ]
+subgroups \"\"         ==>  [ \"bar\", \"default\" ]
+subgroups \"bar\"      ==>  [ \"bar.a\", \"bar.b\" ]
+subgroups \"bar.b\"    ==>  [ \"bar.b.c\" ]
+subgroups \"default\"  ==>  [ \"default.a\" ]
 @
 
 All other arguments to @subgroups@ would return @[]@ in the given context.
@@ -210,14 +212,14 @@ recover :: ConfigParser m => m a -> m (Maybe a)
 recover m = configParser_ $ \r -> let (ma, errs) = unConfigParser_ m r
                                    in (Just ma, errs)
 
---  Look up a given value in the current configuration context,  and convert
---  the value using the 'fromMaybeValue' method.
+-- | Look up a given value in the current configuration context,  and convert
+-- the value using the 'fromMaybeValue' method.
 
 key :: (ConfigParser m, FromMaybeValue a) => Name -> m a
 key name = keyWith name fromMaybeValue
 
---  Look up a given value in the current configuration context,  and convert
---  the value using the 'MaybeParser' argument.
+-- | Look up a given value in the current configuration context,  and convert
+-- the value using the 'MaybeParser' argument.
 
 keyWith :: (ConfigParser m) => Name -> MaybeParser a -> m a
 keyWith name parser =
