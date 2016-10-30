@@ -12,31 +12,37 @@
 -- A set of combinators for high-level configuration parsing.
 
 module Data.Configurator.Parser
-    ( ConfigParser
-    , ConfigParserA
-    , ConfigParserM
-    , ConfigError (..)
-    , ConfigErrorLocation (..)
-    , ConversionError (..)
-    , ConversionErrorWhy (..)
-    , Config
-    , ConfigTransform
-    , unsafeBind
+    (
+    -- * High level parsing computations
+      ConfigParser
     , runParser
+    , ConfigParserA
     , runParserA
-    , runParserM
     , parserA
+    , unsafeBind
+    , ConfigParserM
+    , runParserM
     , parserM
+    , recover
+    -- * Looking up values by name
+    , key
+    , keyWith
+    -- * Discovering names
+    , subgroups
     , subassocs
     , subassocs'
-    , subgroups
+    -- * Modifying the configuration context
+    , Config
+    , ConfigTransform
     , localConfig
     , union
     , subconfig
     , superconfig
-    , recover
-    , key
-    , keyWith
+    -- * Error / warning messages
+    , ConfigError (..)
+    , ConfigErrorLocation (..)
+    , ConversionError (..)
+    , ConversionErrorWhy (..)
     ) where
 
 import           Prelude hiding (null)

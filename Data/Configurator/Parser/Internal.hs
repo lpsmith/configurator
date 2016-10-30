@@ -7,6 +7,7 @@
 
 module Data.Configurator.Parser.Internal 
     ( RMW
+    , ConfigErrors
     , ConfigParser (..)
     , ConfigParserM (..)
     , ConfigParserA (..)

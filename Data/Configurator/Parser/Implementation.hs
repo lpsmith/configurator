@@ -25,11 +25,8 @@ type RMW r w a = r -> (Maybe a, w)
 
 type ConfigErrors = Maybe (DList ConfigError)
 
--- | A @'ConfigParserM' a@ computation produces a value of type @'Maybe' a@
---   from a given 'Config',  in addition to a list of diagnostic messages
---   which may be interpreted as warnings or errors as deemed appropriate.
---   If the value returned by a computation is 'Nothing', then no subsequent
---   actions (e.g. via @\<*\>@ or @>>=@) will be performed.
+-- | If the value returned by a computation is 'Nothing', then no subsequent
+--   actions (e.g. via '<*>' or '>>=') will be performed.
 
 newtype ConfigParserM a
     = ConfigParserM { unConfigParserM :: RMW Config ConfigErrors a }
@@ -50,9 +47,7 @@ instance Monad ConfigParserM where
                          Just a  -> let (mb, w') = unConfigParserM (k a) r
                                      in (mb, w <> w')
 
--- | A @'ConfigParserM' a@ computation produces a value of type @'Maybe' a@
---   from a given 'Config',  in addition to a list of diagnostic messages.
---   After executing a subcomputation that returns a 'Nothing' value,
+-- | After executing a subcomputation that returns a 'Nothing' value,
 --   computations of type 'ConfigParserA' will continue to run in order to
 --   produce more error messages.  For this reason,  'ConfigParserA' does
 --   not have a proper 'Monad' instance.  (But see 'unsafeBind')
@@ -74,7 +69,7 @@ instance Applicative ConfigParserA where
 
 -- |  The purpose of this function is to make it convenient to use do-notation
 --    with 'ConfigParserA',  either by defining a Monad instance or locally
---    rebinding '(>>=)'.    Be warned that this is an abuse,  and incorrect
+--    rebinding '>>='.    Be warned that this is an abuse,  and incorrect
 --    usage can result in exceptions.   A safe way to use this function
 --    would be to treat is as applicative-do notation.  A safer alternative
 --    would be to use the @ApplicativeDo@ language extension available in
@@ -118,9 +113,13 @@ instance Alternative ConfigParserA where
 
 --}
 
--- |  The 'ConfigParser' type class abstracts over 'ConfigParserM' and
---    'ConfigParserA'.   This is intended to be a closed typeclass, without
---    any additional instances.
+-- | A 'ConfigParser' computation produces a value of type @'Maybe' a@
+--   from a given 'Config',  in addition to a list of diagnostic messages,
+--   which may be interpreted as warnings or errors as deemed appropriate.
+--   The type class abstracts over 'ConfigParserM' and 'ConfigParserA'
+--   variants,  which are isomorphic but have different 'Applicative' and
+--   'Monad' instances.  This is intended to be a closed typeclass, without
+--   any additional instances.
 
 class Applicative m => ConfigParser m where
     configParser_   :: RMW Config ConfigErrors a -> m a
