@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, DeriveDataTypeable, DeriveFunctor #-}
+{-# LANGUAGE CPP, DeriveDataTypeable, DeriveFunctor, TupleSections #-}
 
 -- |
 -- Module:      Data.Configurator.Parser.Implementation
@@ -15,10 +15,12 @@ import           Control.Monad (ap)
 import           Data.Configurator.Config (Config)
 import qualified Data.Configurator.Config as C
 import           Data.Configurator.Config.Implementation (ConfigPlan(..))
-import           Data.Configurator.Types (ConfigError)
+import           Data.Configurator.Types (ConfigError,Name)
 import           Data.DList (DList)
+import           Data.Maybe
 import           Data.Monoid
 import           Data.Text (Text)
+import qualified Data.Text as T
 import           Data.Typeable (Typeable)
 
 type RMW r w a = r -> (Maybe a, w)
@@ -46,6 +48,18 @@ instance Monad ConfigParserM where
                          Nothing -> (Nothing, w)
                          Just a  -> let (mb, w') = unConfigParserM (k a) r
                                      in (mb, w <> w')
+
+-- | Runs a parser on all the subgroups of a key and returns the parsed list.
+--   If any of the individual parsers fail, they are ommitted from the output
+--   but their error messages are added to the output errors.
+subparser :: Text -> ConfigParserM a -> ConfigParserM [(Name,a)]
+subparser k p = ConfigParserM $ \r ->
+    let subs = C.subgroups k r
+        outs = map (\sk -> unConfigParserM p $ C.subconfig sk r) subs
+     in (Just $ catMaybes $ zipWith mkTuple subs outs,
+         mconcat $ map snd outs)
+  where
+    mkTuple s a = (T.drop (T.length k + 1) s,) <$> fst a
 
 -- | After executing a subcomputation that returns a 'Nothing' value,
 --   computations of type 'ConfigParserA' will continue to run in order to

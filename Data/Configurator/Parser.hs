@@ -23,6 +23,7 @@ module Data.Configurator.Parser
     , ConfigParserM
     , runParserM
     , parserM
+    , subparser
     , recover
     -- * Looking up values by name
     , key
