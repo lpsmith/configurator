@@ -61,6 +61,13 @@ subparser k p = ConfigParserM $ \r ->
   where
     mkTuple s a = (T.drop (T.length k + 1) s,) <$> fst a
 
+mapSubgroups :: ConfigParser m => Name -> (Name -> m a) -> m [a]
+mapSubgroups k f = configParser_ $ \r ->
+    let subs = C.subgroups k r
+        outs = map (\sk -> unConfigParser_ (f sk) $ C.subconfig sk r) subs
+     in (Just $ catMaybes $ map fst outs, mconcat $ map snd outs)
+
+
 -- | After executing a subcomputation that returns a 'Nothing' value,
 --   computations of type 'ConfigParserA' will continue to run in order to
 --   produce more error messages.  For this reason,  'ConfigParserA' does

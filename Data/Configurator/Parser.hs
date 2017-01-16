@@ -30,6 +30,7 @@ module Data.Configurator.Parser
     , keyWith
     -- * Discovering names
     , subgroups
+    , mapSubgroups
     , subassocs
     , subassocs'
     -- * Modifying the configuration context
