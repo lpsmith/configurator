@@ -16,11 +16,11 @@ module Data.Configurator.Parser
     -- * High level parsing computations
       ConfigParser
     , runParser
-    , ConfigParserA
+    , ConfigParserA(..)
     , runParserA
     , parserA
     , unsafeBind
-    , ConfigParserM
+    , ConfigParserM(..)
     , runParserM
     , parserM
     , subparser
