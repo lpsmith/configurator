@@ -12,10 +12,13 @@ import qualified Data.ByteString.Lazy.Char8 as L
 import           Data.Configurator
 import           Data.Configurator.Parser
 import           Data.Configurator.Types
+import           Data.Function (on)
 import           Data.Functor
 import           Data.Int
+import           Data.List (sortBy)
 import           Data.Maybe
 import           Data.Text (Text)
+import qualified Data.Text as T
 import           Data.Word
 import           System.Directory
 import           System.Environment
@@ -166,6 +169,25 @@ typesTest =
 
     let (asChar, _errs) = runParserM (key "c" :: ConfigParserM Char) cfg
     assertEqual "char" asChar (Just 'x')
+
+    let (assocs1, _errs) = runParserM (subassocs "ac") cfg
+    assertEqual "assocs" assocs1 (Just [("ac.x", Number 1),("ac.y", Bool True)])
+
+    home    <- T.pack <$> getEnv "HOME"
+
+    let (assocs2, _errs) = runParserM (subassocs "") cfg
+    assertEqual "assocs'" assocs2
+                (Just (sortBy (compare `on` fst)
+                              [ ("aa", Number 1)
+                              , ("ab", String "foo")
+                              , ("ad", Bool False)
+                              , ("ae", Number 1)
+                              , ("af", List [Number 2, Number 3])
+                              , ("ba", String home)
+                              , ("xs", List [Number 1, Number 2, Number 3])
+                              , ("c" , String "x")
+                              , ("notacomment", Number 42)
+                              ]))
 
 interpTest :: Assertion
 interpTest =
