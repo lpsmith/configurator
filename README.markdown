@@ -1,5 +1,5 @@
 # [configurator-ng](https://github.com/lpsmith/configurator-ng)
-##What is this?
+## What is this?
 
 This is a massively breaking revision of the application interface of
 [configurator].   The configuration file syntax is backward compatible,
@@ -31,18 +31,22 @@ wrapped up in a more expressive interface.
 
 The interface of `configurator` basically is:
 
-    data Config = Config (IORef (HashMap Text Value))
+```haskell
+data Config = Config (IORef (HashMap Text Value))
 
-    lookup :: Configured a => Config -> Text -> IO (Maybe a)
+lookup :: Configured a => Config -> Text -> IO (Maybe a)
+```
 
 The `IORef` is there to support configuration file reloading,  which
 is often done automatically.  So this results in the race condition:
 
-    do
-      key0 <- lookup config "key0"
-      reload config  {- in another thread -}
-      key1 <- lookup config "key1"
-      return (key0, key1)
+```haskell
+do
+  key0 <- lookup config "key0"
+  reload config  {- in another thread -}
+  key1 <- lookup config "key1"
+  return (key0, key1)
+```
 
 Thus,  we have taken `key0` and `key1` from two versions of the
 configuration files,  with a overall result that is not necessarily
@@ -52,7 +56,9 @@ There is a way to solve this race condition\*, though it is by no
 means convenient and it provides even less support for turning the
 result into configuration parameters:
 
-    getMap :: Config -> IO (HashMap Text Value)
+```haskell
+getMap :: Config -> IO (HashMap Text Value)
+```
 
 This obtains a consistent\* snapshot of the configuration,  from which
 you can pull out multiple values.   But in addition to being
@@ -66,11 +72,13 @@ interface to read configuration info from a single snapshot.  See the
 module `Data.Configurator.Parser`.  The basic ideas behind the revised
 interface is as follows:
 
-    data ConfigCache = ConfigCache (IORef Config)
+```haskell
+data ConfigCache = ConfigCache (IORef Config)
 
-    readConfig :: ConfigCache -> IO Config
+readConfig :: ConfigCache -> IO Config
 
-    runParser :: ConfigParser m => m a -> Config -> (Maybe a, [ConfigError])
+runParser :: ConfigParser m => m a -> Config -> (Maybe a, [ConfigError])
+```
 
 (Here,  `ConfigError` could be an error condition, or it might be more
 analogous to a warning or informational message;  thus a parser can
@@ -79,8 +87,10 @@ return a result *and* some `ConfigError`s.)
 Finally,  we could define a `ConfigParser` to read from key1 and key2
 by writing:
 
-    getKeys :: ConfigParser m => m (Text, Int)
-    getKeys = (,) <$> key "key0" <*> key "key1"
+```haskell
+getKeys :: ConfigParser m => m (Text, Int)
+getKeys = (,) <$> key "key0" <*> key "key1"
+```
 
 (\*It's important to point out that `getMap` only avoids introducing
 additional race conditions;  commonly used filesystems are racey
@@ -106,7 +116,7 @@ Consider the following use case:   you have an event processor,  that
 watches several named sources for events.   You might like your
 configuration file to look something like this:
 
-~~~
+```
 event-sources {
     amazon-cloud {
         postgres {
@@ -133,7 +143,7 @@ event-sources {
         heartbeat-timeout  = 15
     }
 }
-~~~
+```
 
 Now, `amazon-cloud` and `chicago-service-center` are names of the source
 useful for whatever purposes (logging, API endpoints, etc), that the
@@ -144,20 +154,24 @@ efficiently discovering these names.  In order to fix this,
 efficiently iterate over these keys (in alphabetical order).  So
 `configurator-ng` offers the following operator:
 
-    subgroups :: ConfigParser m => Text -> m [Text]
+```haskell
+subgroups :: ConfigParser m => Text -> m [Text]
+```
 
 `subgroups` returns the non-empty value groupings of it's argument,
 so for example when evaluated in the context of the configuration above:
 
-    subgroups ""              ==> [ "event-sources" ]
+```haskell
+subgroups ""              ==> [ "event-sources" ]
 
-    subgroups "event-sources" ==> [ "event-sources.amazon-cloud"
-                                  , "event-sources.chicago-service-center" ]
+subgroups "event-sources" ==> [ "event-sources.amazon-cloud"
+                              , "event-sources.chicago-service-center" ]
+```
 
 Another issue is that there's a lot of redundancy here,  so maybe we'd like to
 refactor the configuration file into something like this:
 
-~~~
+```
 event-sources {
     amazon-cloud {
         postgres.host = "cloudevents.mydomain.com"
@@ -177,25 +191,25 @@ event-sources {
         heartbeat-timeout  = 15
     }
 }
-~~~
+```
 
 So now the problem is that we want to turn this configuration into a
 list of `EventSource`s:
 
-~~~
+```
 data EventSource = EventSource {
     name              :: !Text,
     libpqConnParams   :: [(Text,Value)],
     heartbeatInterval :: !Micro,
     heartbeatTimeout  :: !Micro,
   }
-~~~
+```
 
 Now, even ignoring the issue of the names mentioned above,  handling
 this sort of customizable defaulting in `configurator` would be rather
 painful.   But it's actually quite easy with `configurator-ng`:
 
-~~~
+```haskell
 {-# LANGUAGE ApplicativeDo, RecordWildCards #-}
 
 mapA :: Applicative f => (a -> f b) -> [a] -> f [b]
@@ -214,7 +228,7 @@ eventSource name = do
         heartbeatInterval <- key "heartbeat-interval"
         heartbeatTimeout  <- key "heartbeat-timeout"
         pure $! EventSource{..}
-~~~
+```
 
 This example uses the `ConfigParserA` variant of `ConfigParser`, so
 that the parser continues to run after encountering an error in order
@@ -222,7 +236,7 @@ to generate more error messages.   It also uses `localConfig` operator
 to run a subparser in a  different configuration context.   There are
 a few operators for modifying the configuration context:
 
-~~~
+```haskell
 localConfig :: ConfigParser m => ConfigTransform -> m a -> m a
 
 data ConfigTransform  -- Conceptually, type ConfigTransform = Config -> Config
@@ -240,7 +254,7 @@ subconfig :: Text -> ConfigTransform
 
 -- | Add a group name as a prefix to all key names
 superconfig :: Text -> ConfigTransform
-~~~
+```
 
 Note that these operators are implemented "symbolically",  so that
 they run in sub-linear (Possibly `O(1)`?) time.  Instead,  the cost of
@@ -266,7 +280,7 @@ Also, `configurator-ng` also allows group names to be inlined into other
 group and key names, separated by a dot character.  For example, these
 configuration snippets are all equivalent:
 
-~~~
+```
 foo {
   bar {
     x = "Hello"
@@ -289,7 +303,7 @@ foo {
 
 foo.bar.x = "Hello"
 foo.bar.y = "World"
-~~~~
+```
 
 With the original `configurator`, only the first snippet is
 syntactically legal.
@@ -310,9 +324,9 @@ time.  Determining how that impacts a given configuration record (like
 Soon,  configurator-ng will offer something along the lines of the
 following function:
 
-~~~
+```haskell
 subscribe :: ConfigParser m => ConfigCache -> m a -> (a -> IO ()) -> IO ()
-~~~
+```
 
 When the configuration files are reloaded,  every subscribed
 `ConfigParser` is rerun,  and the result is passed on to the
@@ -321,7 +335,7 @@ unless their configuration actually changes.   However,  this is
 actually a reasonable thing to punt to the callback,  because
 we can write a generic callback wrapper to handle this issue:
 
-~~~
+```haskell
 debounce :: (a -> a -> Bool) -> (a -> IO ()) -> IO (a -> IO ())
 debounce notEq callback = do
     last_seen <- newIORef Nothing
@@ -335,7 +349,7 @@ debounce notEq callback = do
           callback new
         else do
           return ()
-~~~
+```
 
 #### Optimizing subscribe
 
