@@ -16,19 +16,21 @@ module Data.Configurator.Parser
     -- * High level parsing computations
       ConfigParser
     , runParser
-    , ConfigParserA
+    , ConfigParserA(..)
     , runParserA
     , parserA
     , unsafeBind
-    , ConfigParserM
+    , ConfigParserM(..)
     , runParserM
     , parserM
+    , subparser
     , recover
     -- * Looking up values by name
     , key
     , keyWith
     -- * Discovering names
     , subgroups
+    , mapSubgroups
     , subassocs
     , subassocs'
     -- * Modifying the configuration context
