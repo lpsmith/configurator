@@ -24,6 +24,7 @@ module Data.Configurator.FromValue
      , ConversionErrorWhy(..)
      , defaultConversionError
      -- * Assorted primitive value parsers
+     , boolValue
      , boundedIntegerValue
      , integralValue
      , fractionalValue
