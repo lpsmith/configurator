@@ -31,7 +31,6 @@ import           Data.Configurator.Types.Internal
                    )
 import           Data.Fixed (Fixed, HasResolution)
 import           Data.Int(Int8, Int16, Int32, Int64)
-import           Data.Monoid
 import           Data.Ratio ( Ratio, (%) )
 import           Data.Scientific
                    ( Scientific,  coefficient, base10Exponent, normalize

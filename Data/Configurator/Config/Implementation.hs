@@ -21,7 +21,6 @@ import           Data.Typeable
 import           Data.CritBit.Map.Lazy (CritBit)
 import qualified Data.CritBit.Map.Lazy as CB
 import qualified Data.List.Ordered as OL
-import           Data.Monoid
 import           Data.Function (on)
 import           Data.Text(Text)
 import qualified Data.Text as T

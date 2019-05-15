@@ -13,7 +13,6 @@ import           Data.Configurator
 import           Data.Configurator.Parser
 import           Data.Configurator.Types
 import           Data.Function (on)
-import           Data.Functor
 import           Data.Int
 import           Data.List (sortBy)
 import           Data.Maybe

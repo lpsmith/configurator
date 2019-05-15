@@ -17,7 +17,6 @@ import qualified Data.Configurator.Config as C
 import           Data.Configurator.Config.Implementation (ConfigPlan(..))
 import           Data.Configurator.Types (ConfigError)
 import           Data.DList (DList)
-import           Data.Monoid
 import           Data.Text (Text)
 import           Data.Typeable (Typeable)
 
@@ -150,17 +149,19 @@ instance ConfigParser ConfigParserA where
 --   of reliable dependency tracking in later versions of configurator-ng.
 newtype ConfigTransform = ConfigTransform (ConfigPlan ())
 
--- | 'mempty' is the identity 'ConfigTransform',  'mappend' is the composition
+-- | 'mempty' is the identity 'ConfigTransform',  <> is the composition
 --   of two 'ConfigTransform's.
-instance Monoid ConfigTransform where
-   mempty = ConfigTransform (ConfigPlan ())
-   (ConfigTransform x) `mappend` (ConfigTransform y) = (ConfigTransform (go x))
+instance Semigroup ConfigTransform where
+   (ConfigTransform x) <> (ConfigTransform y) = (ConfigTransform (go x))
      where
        go (ConfigPlan _)      = y
        go (Union a b)         = Union (go a) (go b)
        go (Superconfig pre a) = Superconfig pre (go a)
        go (Subconfig pre a)   = Subconfig pre (go a)
        go Empty               = Empty
+
+instance Monoid ConfigTransform where
+   mempty = ConfigTransform (ConfigPlan ())
 
 -- | Conceptually,  @'union' f g = \\config -> union\' (f config) (g config)@,
 -- where @union\'@ is the left-biased union of two 'Config's.
