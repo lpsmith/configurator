@@ -17,7 +17,6 @@ import qualified Data.Configurator.Config as C
 import           Data.Configurator.Config.Implementation (ConfigPlan(..))
 import           Data.Configurator.Types (ConfigError)
 import           Data.DList (DList)
-import           Data.Monoid
 import           Data.Text (Text)
 import           Data.Typeable (Typeable)
 
